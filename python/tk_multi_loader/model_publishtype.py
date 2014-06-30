@@ -46,8 +46,10 @@ class SgPublishTypeModel(ShotgunOverlayModel):
         
         if publish_entity_type == "PublishedFile":
             publish_type_field = "PublishedFileType"
+            publish_type_filter = []
         else:
             publish_type_field = "TankType"
+            publish_type_filter = [['project', 'is', app.context.project]]
                 
         # get previous sessions selection
         self._deselected_pub_types = self._settings_manager.retrieve("deselected_pub_types", 
@@ -64,7 +66,7 @@ class SgPublishTypeModel(ShotgunOverlayModel):
                 
         ShotgunOverlayModel._load_data(self, 
                                        entity_type=publish_type_field, 
-                                       filters=[], 
+                                       filters=publish_type_filter, 
                                        hierarchy=["code"], 
                                        fields=["code","description","id"],
                                        seed=mappings_str)
