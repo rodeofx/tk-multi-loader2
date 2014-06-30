@@ -74,6 +74,7 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         """
 
         app = sgtk.platform.current_bundle()
+        entities = app.get_setting("entities")
 
         if item is None:
             # nothing selected in the treeview
@@ -109,14 +110,11 @@ class SgLatestPublishModel(ShotgunOverlayModel):
                 # a big in statement listing all the ids returned from
                 # the previous query, asking the model to only show the
                 # items matching the previous query.
-                #
-                # note that for tasks, we link via the task field
-                # rather than the std entity link field
-                #
-                if entity_type == "Task":
-                    sg_filters = [["task", "in", data]]
-                else:
-                    sg_filters = [["entity", "in", data]]
+                publish_field = "entity"
+                for e in entities:
+                    if e.get("entity_type") == entity_type:
+                        publish_field = e.get("publish_field", "entity")
+                sg_filters = [[publish_field, "in", data]]
 
                 # lastly, when we are in this special mode, the main view
                 # is no longer functioning as a browsable hierarchy
@@ -142,13 +140,13 @@ class SgLatestPublishModel(ShotgunOverlayModel):
 
                 if sg_data:
                     # leaf node!
-                    # show the items associated. Handle tasks
-                    # via the task field instead of the entity field
-                    if sg_data.get("type") == "Task":
-                        sg_filters = [["task", "is", {"type": sg_data["type"], "id": sg_data["id"]} ]]
-                    else:
-                        sg_filters = [["entity", "is", {"type": sg_data["type"], "id": sg_data["id"]} ]]
-
+                    # show the items associated.
+                    publish_field = "entity"
+                    for e in entities:
+                        if e.get("entity_type") == sg_data["type"]:
+                            publish_field = e.get("publish_field", "entity")
+                    sg_filters = [[publish_field, "is", {"type": sg_data["type"], "id": sg_data["id"]} ]]
+                
                 else:
                     # intermediate node. Get the field data
                     field_name = field_data["name"]
@@ -157,8 +155,12 @@ class SgLatestPublishModel(ShotgunOverlayModel):
                     if isinstance(field_value, dict) and "name" in field_value and "type" in field_value:
                         # this is an intermediate node like a sequence or an asset which
                         # can have publishes of its own associated
-                        sg_filters = [["entity", "is", field_value ]]
-
+                        publish_field = "entity"
+                        for e in entities:
+                            if e.get("entity_type") == field_value["type"]:
+                                publish_field = e.get("publish_field", "entity")
+                        sg_filters = [[publish_field, "is", field_value ]]
+                    
                     else:
                         # this is an intermediate node like status or asset type which does not
                         # have any publishes of its own, because the value (e.g. the status or the asset type)

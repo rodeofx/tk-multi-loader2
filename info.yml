@@ -72,22 +72,32 @@ configuration:
         default_value:
             - caption: Assets
               entity_type: Asset
+              publish_field: entity
               filters:
               - ["project", "is", "{context.project}"]
               hierarchy: [sg_asset_type, code]
 
             - caption: Shots
               entity_type: Shot
+              publish_field: entity
               filters:
               - ["project", "is", "{context.project}"]
               hierarchy: [sg_sequence, code]
 
             - caption: My Tasks
               entity_type: Task
+              publish_field: task
               filters:
               - [task_assignees, is, '{context.user}']
               - ["project", "is", "{context.project}"]
               hierarchy: [entity, content]
+
+            - caption: By User
+              entity_type: HumanUser
+              publish_field: created_by
+              filters:
+              - [projects, is, '{context.project}']
+              hierarchy: [department, name]
 
 
         type: list
