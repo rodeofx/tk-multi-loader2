@@ -260,7 +260,7 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
             # this is a publish!
 
             # example data:
-            
+
             # {'code': 'aaa_00010_F004_C003_0228F8_v000.%04d.dpx',
             #  'created_at': 1425378837.0,
             #  'created_by': {'id': 42, 'name': 'Manne Ohrstrom', 'type': 'HumanUser'},
@@ -299,34 +299,11 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
             #  'version.Version.sg_status_list': 'rev',
             #  'version_number': 2}
 
-            # get the name (lighting v3)
-            name_str = "Unnamed"
-            if sg_data.get("name"):
-                name_str = sg_data.get("name")
-
-            if sg_data.get("version_number"):
-                name_str += " v%s" % sg_data.get("version_number")
-
-            # now we are tracking whether this item has a unique task/name/type combo
-            # or not via the specially injected task_uniqueness boolean.
-            # If this is true, that means that this is the only item in the listing
-            # with this name/type combo, and we can render its display name on two 
-            # lines, name first and then type, e.g.:
-            # MyScene, v3
-            # Maya Render
-            #
-            # However, there can be multiple *different* tasks which have the same 
-            # name/type combo - in this case, we want to display the task name too
-            # since this is what differentiates the data. In that case we display it:
-            # MyScene, v3 (Layout)
-            # Maya Render
-            #
-            if sg_data.get("task_uniqueness") == False and sg_data.get("task") is not None:
-                name_str += " (%s)" % sg_data["task"]["name"]
-
+            name_str = self._get_name_string(sg_data)
+            
             # make this the title of the card
             header_text = name_str
-
+    
             # and set a tooltip
             tooltip =  "<b>Name:</b> %s" % (sg_data.get("code") or "No name given.")
             # Version 012 by John Smith at 2014-02-23 10:34            
@@ -366,11 +343,80 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
                 # std publish - render with a name and a publish type
                 # main_body v3
                 # Render
-                details_text = shotgun_model.get_sanitized_data(model_index,
-                                                                SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE)
+                details_text = self._get_details_text(sg_data)
 
-            
         widget.set_text(header_text, details_text, tooltip)
+
+    def _get_name_string(self, sg_data):
+        # example data:
+        
+        # {'code': 'aaa_00010_F004_C003_0228F8_v000.%04d.dpx',
+        #  'created_at': 1425378837.0,
+        #  'created_by': {'id': 42, 'name': 'Manne Ohrstrom', 'type': 'HumanUser'},
+        #  'created_by.HumanUser.image': 'https://...',
+        #  'description': 'testing testing, 1,2,3',
+        #  'entity': {'id': 1660, 'name': 'aaa_00010', 'type': 'Shot'},
+        #  'id': 1340,
+        #  'image': 'https:...',
+        #  'name': 'aaa_00010, F004_C003_0228F8',
+        #  'path': {'content_type': 'image/dpx',
+        #           'id': 24116,
+        #           'link_type': 'local',
+        #           'local_path': '/mnt/projects...',
+        #           'local_path_linux': '/mnt/projects...',
+        #           'local_path_mac': '/mnt/projects...',
+        #           'local_path_windows': 'z:\\mnt\\projects...',
+        #           'local_storage': {'id': 4,
+        #                             'name': 'primary',
+        #                             'type': 'LocalStorage'},
+        #           'name': 'aaa_00010_F004_C003_0228F8_v000.%04d.dpx',
+        #           'type': 'Attachment',
+        #           'url': 'file:///mnt/projects...'},
+        #  'project': {'id': 289, 'name': 'Climp', 'type': 'Project'},
+        #  'published_file_type': {'id': 53,
+        #                          'name': 'Flame Render',
+        #                          'type': 'PublishedFileType'},
+        #  'task': None,
+        #  'task.Task.content': None,
+        #  'task.Task.due_date': None,
+        #  'task.Task.sg_status_list': None,
+        #  'task_uniqueness': False,
+        #  'type': 'PublishedFile',
+        #  'version': {'id': 6697,
+        #              'name': 'aaa_00010_F004_C003_0228F8_v000',
+        #              'type': 'Version'},
+        #  'version.Version.sg_status_list': 'rev',
+        #  'version_number': 2}
+
+        # get the name (lighting v3)
+        name_str = "Unnamed"
+        if sg_data.get("name"):
+            name_str = sg_data.get("name")
+
+        if sg_data.get("version_number"):
+            name_str += " v%s" % sg_data.get("version_number")
+
+        # now we are tracking whether this item has a unique task/name/type combo
+        # or not via the specially injected task_uniqueness boolean.
+        # If this is true, that means that this is the only item in the listing
+        # with this name/type combo, and we can render its display name on two 
+        # lines, name first and then type, e.g.:
+        # MyScene, v3
+        # Maya Render
+        #
+        # However, there can be multiple *different* tasks which have the same 
+        # name/type combo - in this case, we want to display the task name too
+        # since this is what differentiates the data. In that case we display it:
+        # MyScene, v3 (Layout)
+        # Maya Render
+        #
+        if sg_data.get("task_uniqueness") == False and sg_data.get("task") is not None:
+            name_str += " (%s)" % sg_data["task"]["name"]
+
+        return name_str
+
+    def _get_details_text(self, sg_data):
+        return ""
 
     def sizeHint(self, style_options, model_index):
         """
@@ -382,5 +428,6 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
         # base the size of each element off the icon size property of the view
         scale_factor = self._view.iconSize().width()
         return PublishThumbWidget.calculate_size(scale_factor)
+
 
 
