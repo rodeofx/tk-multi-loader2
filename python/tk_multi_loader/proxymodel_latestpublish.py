@@ -25,6 +25,7 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         QtGui.QSortFilterProxyModel.__init__(self, parent)
         self._valid_type_ids = None
         self._show_folders = True
+        self._valid_statuses = None
         
     def set_filter_by_type_ids(self, type_ids, show_folders):
         """
@@ -35,6 +36,12 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         # tell model to repush data
         self.invalidateFilter()
         self.filter_changed.emit()
+
+    def set_filter_by_status(self, statuses):
+        self._valid_statuses = statuses
+        self.invalidateFilter()
+        self.filter_changed.emit()
+
         
     def filterAcceptsRow(self, source_row, source_parent_idx):
         """
@@ -48,14 +55,20 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         search_exp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
 
         model = self.sourceModel()
-
+        
         current_item = model.invisibleRootItem().child(source_row)  # assume non-tree structure
         sg_data = current_item.get_sg_data()
         publish_name = ''
         if sg_data:
             publish_name = sg_data.get('name')
+            publish_status = sg_data.get('sg_status_list')
         
         is_folder = current_item.data(SgLatestPublishModel.IS_FOLDER_ROLE)
+
+        # See if status matches
+        if self._valid_statuses not in (None, 'All'):
+            if publish_status != self._valid_statuses:
+                return False
 
         if self._valid_type_ids is None:
             # accept all!

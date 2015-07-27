@@ -236,7 +236,11 @@ class AppDialog(QtGui.QWidget):
         self._set_details_pane_visiblity(show_details)
 
         # Add rdo custom UI
-        self._add_rdo_publish_search()
+        hlayout = QtGui.QHBoxLayout()
+        self.ui.middle_area.insertLayout(1, hlayout,)
+        hlayout.addStretch(50)
+        self._add_rdo_status_filter(hlayout)
+        self._add_rdo_publish_search(hlayout)
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
@@ -731,6 +735,15 @@ class AppDialog(QtGui.QWidget):
         show_folders = self._publish_type_model.get_show_folders()
         self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
 
+
+    def apply_status_filters_on_publishes(self):
+        """
+        Executed when the type listing changes
+        """
+        chosen_status = self.filter_status.currentText()
+        show_folders = self._publish_type_model.get_show_folders()
+        self._publish_proxy_model.set_filter_by_status(chosen_status)
+
     ########################################################################################
     # publish view
 
@@ -1186,16 +1199,33 @@ class AppDialog(QtGui.QWidget):
             self.ui.label_2.hide()
             self.ui.thumb_scale.hide()
 
-    def _add_rdo_publish_search(self):
+    def _add_rdo_status_filter(self, hlayout):
+        '''
+        Add a combo box to sort the latest publishes by status
+        Kind of copying off the _add_rdo_status_filter
+        '''
+        filter_label = QtGui.QLabel("Filter by Status")
+        filter_label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self.filter_status = QtGui.QComboBox()
+        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
+        self.filter_status.setSizePolicy(sizePolicy)
+        stati = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
+        self.filter_status.addItem("All")
+        
+        for status in stati:
+            icon = QtGui.QIcon()
+            icon.addPixmap(QtGui.QPixmap("/mnt/users/laura/rdoenv/tank/tk-multi-loader2/resources/%s.png"%status), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self.filter_status.addItem(icon, status)
+        hlayout.addWidget(filter_label)
+        hlayout.addWidget(self.filter_status)
+        self.filter_status.activated.connect(self.apply_status_filters_on_publishes)
+
+    def _add_rdo_publish_search(self, hlayout):
         '''
         Add a search box to the middle area to filter the latest publishes
         It's a ripoff the entity search box but hooked to publish proxy model
         '''
 
-        hlayout = QtGui.QHBoxLayout()
-        self.ui.middle_area.insertLayout(1, hlayout,)
-
-        hlayout.addStretch(50)
 
         # add search textfield
         search = QtGui.QLineEdit()

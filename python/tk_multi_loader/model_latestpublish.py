@@ -244,7 +244,8 @@ class SgLatestPublishModel(ShotgunOverlayModel):
                           "created_at",
                           "version", # note: not supported on TankPublishedFile so always None
                           "version.Version.sg_status_list",
-                          "created_by.HumanUser.image"
+                          "created_by.HumanUser.image",
+                          "sg_status_list",
                           ]
 
 
