@@ -25,6 +25,8 @@ from .delegate_publish_history import SgPublishHistoryDelegate
 
 from .ui.dialog import Ui_Dialog
 
+STATUS_LIST = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
+
 # import frameworks
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
 settings = sgtk.platform.import_framework("tk-framework-shotgunutils", "settings")
@@ -146,7 +148,8 @@ class AppDialog(QtGui.QWidget):
         self._publish_model.cache_loaded.connect(self._on_publish_content_change)
         self._publish_model.data_refreshed.connect(self._on_publish_content_change)
         self._publish_proxy_model.filter_changed.connect(self._on_publish_content_change)
-
+        self._publish_model.data_refreshed.connect(self._on_status_filter_change)
+        self._publish_proxy_model.filter_changed.connect(self._on_status_filter_change)
 
         # hook up view -> proxy model -> model
         self.ui.publish_view.setModel(self._publish_proxy_model)
@@ -187,6 +190,11 @@ class AppDialog(QtGui.QWidget):
 
         self.ui.check_all.clicked.connect(self._publish_type_model.select_all)
         self.ui.check_none.clicked.connect(self._publish_type_model.select_none)
+        
+        #################################################
+        # filter status
+        self._filter_status = QtGui.QComboBox()
+        self._sg_type_ids = None
 
         #################################################
         # thumb scaling
@@ -731,17 +739,16 @@ class AppDialog(QtGui.QWidget):
         # go through and figure out which checkboxes are clicked and then
         # update the publish proxy model so that only items of that type
         # is displayed
-        sg_type_ids = self._publish_type_model.get_selected_types()
+        self._sg_type_ids = self._publish_type_model.get_selected_types()
         show_folders = self._publish_type_model.get_show_folders()
-        self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
+        self._publish_proxy_model.set_filter_by_type_ids(self._sg_type_ids, show_folders)
 
 
     def apply_status_filters_on_publishes(self):
         """
         Executed when the type listing changes
         """
-        chosen_status = self.filter_status.currentText()
-        show_folders = self._publish_type_model.get_show_folders()
+        chosen_status = self._filter_status.currentText()
         self._publish_proxy_model.set_filter_by_status(chosen_status)
 
     ########################################################################################
@@ -1206,19 +1213,10 @@ class AppDialog(QtGui.QWidget):
         '''
         filter_label = QtGui.QLabel("Filter by Status")
         filter_label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
-        self.filter_status = QtGui.QComboBox()
-        sizePolicy = QtGui.QSizePolicy(QtGui.QSizePolicy.Fixed, QtGui.QSizePolicy.Fixed)
-        self.filter_status.setSizePolicy(sizePolicy)
-        stati = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
-        self.filter_status.addItem("All")
-        
-        for status in stati:
-            icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap("/mnt/users/laura/rdoenv/tank/tk-multi-loader2/resources/%s.png"%status), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-            self.filter_status.addItem(icon, status)
+        self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
         hlayout.addWidget(filter_label)
-        hlayout.addWidget(self.filter_status)
-        self.filter_status.activated.connect(self.apply_status_filters_on_publishes)
+        hlayout.addWidget(self._filter_status)
+        self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
 
     def _add_rdo_publish_search(self, hlayout):
         '''
@@ -1516,6 +1514,30 @@ class AppDialog(QtGui.QWidget):
         breadcrumbs = " <span style='color:#2C93E2'>&#9656;</span> ".join( crumbs[::-1] )
 
         self.ui.entity_breadcrumbs.setText("<big>%s</big>" % breadcrumbs)
+
+    def _on_status_filter_change(self):
+        """
+        Reload the status filter combo box 
+        With correct count in brackets
+        """
+        tmp_index = self._filter_status.currentIndex()
+        tmp_index = 0 if tmp_index< 0 else tmp_index
+
+        publish_items = self._publish_model._publish_items
+        self._filter_status.clear()
+
+        valid_ids = self._publish_proxy_model._valid_type_ids
+        valid_items = [item for item in publish_items if item['type_id'] in valid_ids]
+        
+
+        self._filter_status.addItem("All (%d)" % len(valid_items))
+        for status in STATUS_LIST:
+            icon = QtGui.QIcon()
+            count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
+            name = "%s (%d)   " % (status, count)
+            icon.addPixmap(QtGui.QPixmap(":/res/%s.png" % status), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self._filter_status.addItem(icon, name)
+        self._filter_status.setCurrentIndex(tmp_index)
 
 ################################################################################################
 # Helper stuff

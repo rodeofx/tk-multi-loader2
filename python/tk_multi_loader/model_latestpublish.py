@@ -41,7 +41,7 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         self._no_pubs_found_icon = QtGui.QPixmap(":/res/no_publishes_found.png")
         self._folder_icon = QtGui.QIcon(QtGui.QPixmap(":/res/folder_512x400.png"))
         self._loading_icon = QtGui.QIcon(QtGui.QPixmap(":/res/loading_512x400.png"))
-
+        self._publish_items = []
         self._associated_items = {}
 
         app = sgtk.platform.current_bundle()
@@ -482,7 +482,7 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         unique_data = {}
         
         for sg_item in sg_data_list:
-            
+
             # get the associated type
             type_id = None
             type_link = sg_item[self._publish_type_field]
@@ -498,13 +498,15 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         # Go ahead count types for the aggregate
         # and assemble filtered sg data set
         new_sg_data = []
+
+        self._publish_items = []
         for second_pass_data in unique_data.values():
 
             # get the shotgun data for this guy
             sg_item = second_pass_data["sg_item"]
-            
             # append to new sg data
             new_sg_data.append(sg_item)
+            self._publish_items.append(second_pass_data)
 
             # update our aggregate counts for the publish type view
             type_id = second_pass_data["type_id"]
@@ -515,7 +517,4 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         self._publish_type_model.set_active_types( type_id_aggregates )
 
         return new_sg_data
-
-
-
 

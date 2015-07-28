@@ -38,7 +38,7 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         self.filter_changed.emit()
 
     def set_filter_by_status(self, statuses):
-        self._valid_statuses = statuses
+        self._valid_statuses = statuses.split(' (')[0]
         self.invalidateFilter()
         self.filter_changed.emit()
 
