@@ -31,6 +31,8 @@ STATUS_LIST = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
 settings = sgtk.platform.import_framework("tk-framework-shotgunutils", "settings")
 help_screen = sgtk.platform.import_framework("tk-framework-qtwidgets", "help_screen")
+app = sgtk.platform.current_bundle()
+rdo_fw_path =  app.frameworks.get("tk-framework-rdo").disk_location
 
 class AppDialog(QtGui.QWidget):
     """
@@ -245,9 +247,10 @@ class AppDialog(QtGui.QWidget):
 
         # Add rdo custom UI
         hlayout = QtGui.QHBoxLayout()
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
         self.ui.middle_area.insertLayout(1, hlayout,)
-        hlayout.addStretch(50)
         self._add_rdo_status_filter(hlayout)
+        hlayout.addItem(spacerItem)
         self._add_rdo_publish_search(hlayout)
 
         # trigger an initial evaluation of filter proxy model
@@ -1212,7 +1215,7 @@ class AppDialog(QtGui.QWidget):
         Kind of copying off the _add_rdo_status_filter
         '''
         filter_label = QtGui.QLabel("Filter by Status")
-        filter_label.setAlignment(QtCore.Qt.AlignRight|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        filter_label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
         self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
         hlayout.addWidget(filter_label)
         hlayout.addWidget(self._filter_status)
@@ -1535,7 +1538,7 @@ class AppDialog(QtGui.QWidget):
             icon = QtGui.QIcon()
             count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
             name = "%s (%d)   " % (status, count)
-            icon.addPixmap(QtGui.QPixmap(":/res/%s.png" % status), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            icon.addPixmap(QtGui.QPixmap("%s/resources/%s.png" % (rdo_fw_path, status)), QtGui.QIcon.Normal, QtGui.QIcon.Off)
             self._filter_status.addItem(icon, name)
         self._filter_status.setCurrentIndex(tmp_index)
 
