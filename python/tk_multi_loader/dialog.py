@@ -770,7 +770,10 @@ class AppDialog(QtGui.QWidget):
             # no suitable item found. Use the first tab
             found_preset = self.ui.entity_preset_tabs.tabText(0)
 
-        if found_model and item:
+        if found_model and found_item:
+            # store current selection data in case model is refreshed. If this happens selection will be lost
+            # and user will have to press home again. This data will be used in SgEntityModel to restore
+            # selection after new data is fed into model.
             found_model.reSelector['entity'] = found_item.get_sg_data()
             found_model.reSelector['found_preset'] = found_preset
             found_model.reSelector['sel_func'] = self._select_item_in_entity_tree
