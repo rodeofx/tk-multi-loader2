@@ -25,10 +25,14 @@ from .delegate_publish_history import SgPublishHistoryDelegate
 
 from .ui.dialog import Ui_Dialog
 
+STATUS_LIST = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
+
 # import frameworks
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
 settings = sgtk.platform.import_framework("tk-framework-shotgunutils", "settings")
 help_screen = sgtk.platform.import_framework("tk-framework-qtwidgets", "help_screen")
+app = sgtk.platform.current_bundle()
+rdo_fw_path =  app.frameworks.get("tk-framework-rdo").disk_location
 
 class AppDialog(QtGui.QWidget):
     """
@@ -146,7 +150,8 @@ class AppDialog(QtGui.QWidget):
         self._publish_model.cache_loaded.connect(self._on_publish_content_change)
         self._publish_model.data_refreshed.connect(self._on_publish_content_change)
         self._publish_proxy_model.filter_changed.connect(self._on_publish_content_change)
-
+        self._publish_model.data_refreshed.connect(self._on_status_filter_change)
+        self._publish_proxy_model.filter_changed.connect(self._on_status_filter_change)
 
         # hook up view -> proxy model -> model
         self.ui.publish_view.setModel(self._publish_proxy_model)
@@ -187,6 +192,11 @@ class AppDialog(QtGui.QWidget):
 
         self.ui.check_all.clicked.connect(self._publish_type_model.select_all)
         self.ui.check_none.clicked.connect(self._publish_type_model.select_none)
+        
+        #################################################
+        # filter status
+        self._filter_status = QtGui.QComboBox()
+        self._sg_type_ids = None
 
         #################################################
         # thumb scaling
@@ -236,7 +246,12 @@ class AppDialog(QtGui.QWidget):
         self._set_details_pane_visiblity(show_details)
 
         # Add rdo custom UI
-        self._add_rdo_publish_search()
+        hlayout = QtGui.QHBoxLayout()
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.ui.middle_area.insertLayout(1, hlayout,)
+        self._add_rdo_status_filter(hlayout)
+        hlayout.addItem(spacerItem)
+        self._add_rdo_publish_search(hlayout)
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
@@ -727,9 +742,17 @@ class AppDialog(QtGui.QWidget):
         # go through and figure out which checkboxes are clicked and then
         # update the publish proxy model so that only items of that type
         # is displayed
-        sg_type_ids = self._publish_type_model.get_selected_types()
+        self._sg_type_ids = self._publish_type_model.get_selected_types()
         show_folders = self._publish_type_model.get_show_folders()
-        self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
+        self._publish_proxy_model.set_filter_by_type_ids(self._sg_type_ids, show_folders)
+
+
+    def apply_status_filters_on_publishes(self):
+        """
+        Executed when the type listing changes
+        """
+        chosen_status = self._filter_status.currentText()
+        self._publish_proxy_model.set_filter_by_status(chosen_status)
 
     ########################################################################################
     # publish view
@@ -1186,16 +1209,24 @@ class AppDialog(QtGui.QWidget):
             self.ui.label_2.hide()
             self.ui.thumb_scale.hide()
 
-    def _add_rdo_publish_search(self):
+    def _add_rdo_status_filter(self, hlayout):
+        '''
+        Add a combo box to sort the latest publishes by status
+        Kind of copying off the _add_rdo_status_filter
+        '''
+        filter_label = QtGui.QLabel("Filter by Status")
+        filter_label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+        hlayout.addWidget(filter_label)
+        hlayout.addWidget(self._filter_status)
+        self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
+
+    def _add_rdo_publish_search(self, hlayout):
         '''
         Add a search box to the middle area to filter the latest publishes
         It's a ripoff the entity search box but hooked to publish proxy model
         '''
 
-        hlayout = QtGui.QHBoxLayout()
-        self.ui.middle_area.insertLayout(1, hlayout,)
-
-        hlayout.addStretch(50)
 
         # add search textfield
         search = QtGui.QLineEdit()
@@ -1486,6 +1517,30 @@ class AppDialog(QtGui.QWidget):
         breadcrumbs = " <span style='color:#2C93E2'>&#9656;</span> ".join( crumbs[::-1] )
 
         self.ui.entity_breadcrumbs.setText("<big>%s</big>" % breadcrumbs)
+
+    def _on_status_filter_change(self):
+        """
+        Reload the status filter combo box 
+        With correct count in brackets
+        """
+        tmp_index = self._filter_status.currentIndex()
+        tmp_index = 0 if tmp_index< 0 else tmp_index
+
+        publish_items = self._publish_model._publish_items
+        self._filter_status.clear()
+
+        valid_ids = self._publish_proxy_model._valid_type_ids
+        valid_items = [item for item in publish_items if item['type_id'] in valid_ids]
+        
+
+        self._filter_status.addItem("All (%d)" % len(valid_items))
+        for status in STATUS_LIST:
+            icon = QtGui.QIcon()
+            count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
+            name = "%s (%d)   " % (status, count)
+            icon.addPixmap(QtGui.QPixmap("%s/resources/%s.png" % (rdo_fw_path, status)), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self._filter_status.addItem(icon, name)
+        self._filter_status.setCurrentIndex(tmp_index)
 
 ################################################################################################
 # Helper stuff
