@@ -18,6 +18,7 @@ from .model_publishtype import SgPublishTypeModel
 from .model_status import SgStatusModel
 from .proxymodel_latestpublish import SgLatestPublishProxyModel
 from .proxymodel_entity import SgEntityProxyModel
+from .delegate_publish_list import SgPublishListDelegate
 from .delegate_publish_thumb import SgPublishDelegate
 from .model_publishhistory import SgPublishHistoryModel
 from .delegate_publish_history import SgPublishHistoryDelegate
@@ -150,8 +151,14 @@ class AppDialog(QtGui.QWidget):
         # hook up view -> proxy model -> model
         self.ui.publish_view.setModel(self._publish_proxy_model)
 
+        # customize the list view before setting the delegate
+        self._add_rdo_list_view_mod()
+
         # tell our publish view to use a custom delegate to produce widgetry
-        self._publish_delegate = SgPublishDelegate(self.ui.publish_view, self._status_model, self._action_manager)
+        if self.ui.publish_view.ViewMode() == QtGui.QListView.IconMode:
+            self._publish_delegate = SgPublishDelegate(self.ui.publish_view, self._status_model, self._action_manager)
+        else:
+            self._publish_delegate = SgPublishListDelegate(self.ui.publish_view, self._status_model, self._action_manager)
         self.ui.publish_view.setItemDelegate(self._publish_delegate)
 
         # whenever the type list is checked, update the publish filters
@@ -202,6 +209,7 @@ class AppDialog(QtGui.QWidget):
         self.ui.navigation_home.clicked.connect(self._on_home_clicked)
         self.ui.navigation_prev.clicked.connect(self._on_back_clicked)
         self.ui.navigation_next.clicked.connect(self._on_forward_clicked)
+        self._first_home_click = {}
 
         #################################################
         # set up cog button actions
@@ -226,6 +234,9 @@ class AppDialog(QtGui.QWidget):
         # load visibility state for details pane
         show_details = self._settings_manager.retrieve("show_details", False)
         self._set_details_pane_visiblity(show_details)
+
+        # Add rdo custom UI
+        self._add_rdo_publish_search()
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
@@ -639,32 +650,52 @@ class AppDialog(QtGui.QWidget):
         # first, try to find the "home" item by looking at the current app context.
         found_preset = None
         found_item = None
+        found_model = None
 
         # get entity portion of context
         ctx = sgtk.platform.current_bundle().context
         if ctx.entity:
-
             # now step through the profiles and find a matching entity
             for p in self._entity_presets:
+                if self._entity_presets[p].ignore_tab:
+                    continue
                 if self._entity_presets[p].entity_type == ctx.entity["type"]:
                     # found an at least partially matching entity profile.
                     found_preset = p
 
                     # now see if our context object also exists in the tree of this profile
                     model = self._entity_presets[p].model
+                    if not model._cache_loaded:
+                        #items in model are not not loaded yet, create callback and wait for it
+                        if self._first_home_click.get('call_from_load', False):
+                            self._first_home_click['model'] = model
+                            model.data_refreshed.connect(self.functionCB)
+                            return
+
                     item = model.item_from_entity(ctx.entity["type"], ctx.entity["id"])
 
                     if item is not None:
                         # find an absolute match! Break the search.
                         found_item = item
+                        found_model = model
                         break
 
         if found_preset is None:
             # no suitable item found. Use the first tab
             found_preset = self.ui.entity_preset_tabs.tabText(0)
 
+        if found_model and found_item:
+            found_model.reSelector['entity'] = found_item.get_sg_data()
+            found_model.reSelector['found_preset'] = found_preset
+            found_model.reSelector['sel_func'] = self._select_item_in_entity_tree
         # select it in the left hand side tree view
         self._select_item_in_entity_tree(found_preset, found_item)
+
+    def functionCB(self):
+        app = sgtk.platform.current_bundle()
+        self._first_home_click['model'].data_refreshed.disconnect(self.functionCB)
+        self._first_home_click = {}
+        self._on_home_clicked()
 
     def _on_back_clicked(self):
         """
@@ -956,7 +987,6 @@ class AppDialog(QtGui.QWidget):
         entities = app.get_setting("entities")
 
         for e in entities:
-
             # validate that the settings dict contains all items needed.
             for k in ["caption", "entity_type", "hierarchy", "filters"]:
                 if k not in e:
@@ -969,6 +999,8 @@ class AppDialog(QtGui.QWidget):
             publish_filters = e.get("publish_filters")
             if publish_filters is None: 
                 publish_filters = []
+
+            ignore_tab = e.get("ignore_tab", False)
 
             # set up a bunch of stuff
 
@@ -1100,7 +1132,8 @@ class AppDialog(QtGui.QWidget):
                               model, 
                               proxy_model, 
                               view,
-                              publish_filters)
+                              publish_filters,
+                              ignore_tab)
 
             self._entity_presets[preset_name] = ep
 
@@ -1109,6 +1142,7 @@ class AppDialog(QtGui.QWidget):
 
         # finalize initialization by clicking the home button, but only once the
         # data has properly arrived in the model.
+        self._first_home_click = {'call_from_load': True}
         self._on_home_clicked()
 
     def _on_search_text_changed(self, pattern, tree_view, proxy_model):
@@ -1136,6 +1170,91 @@ class AppDialog(QtGui.QWidget):
         else:
             # revert to default style sheet
             tree_view.setStyleSheet("QTreeView::item { padding: 6px; }")
+
+    def _add_rdo_list_view_mod(self):
+        '''
+        Change the publish list view to ListMode instead of IconMode
+        and hide the scale control.
+        Make uses of the updated delegates to properly display items
+        according to the current Mode.
+        '''
+        if not sgtk.platform.current_bundle().get_setting("display_thumbnails"):
+            # Change the tree view to display item as a list
+            self.ui.publish_view.setSpacing(1)
+            self.ui.publish_view.setViewMode(QtGui.QListView.ListMode)
+
+            self.ui.label_2.hide()
+            self.ui.thumb_scale.hide()
+
+    def _add_rdo_publish_search(self):
+        '''
+        Add a search box to the middle area to filter the latest publishes
+        It's a ripoff the entity search box but hooked to publish proxy model
+        '''
+
+        hlayout = QtGui.QHBoxLayout()
+        self.ui.middle_area.insertLayout(1, hlayout,)
+
+        hlayout.addStretch(50)
+
+        # add search textfield
+        search = QtGui.QLineEdit()
+        search.setStyleSheet("QLineEdit{ border-width: 1px; "
+                                    "background-image: url(:/res/search.png);"
+                                    "background-repeat: no-repeat;"
+                                    "background-position: center left;"
+                                    "border-radius: 5px; "
+                                    "padding-left:20px;"
+                                    "margin:4px;"
+                                    "height:22px;"
+                                    "}")
+        search.setToolTip("Use the <i>search</i> field to narrow down the items displayed in the tree above.")
+
+        try:
+            # this was introduced in qt 4.7, so try to use it if we can... :)
+            search.setPlaceholderText("Search...")
+        except:
+            pass
+
+        hlayout.addWidget(search)
+
+        # and add a cancel search button, disabled by default
+        clear_search = QtGui.QToolButton()
+        icon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(":/res/clear_search.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+        clear_search.setIcon(icon)
+        clear_search.setAutoRaise(True)
+        clear_search.clicked.connect( lambda editor=search: editor.setText("") )
+        clear_search.setToolTip("Click to clear your current search.")
+        hlayout.addWidget(clear_search)
+
+        search.textChanged.connect(lambda text, v=self.ui.publish_view, pm=self._publish_proxy_model: self._on_publish_search_text_changed(text, v, pm) )
+
+        self._dynamic_widgets.extend([hlayout, search, clear_search, icon])
+
+
+    def _on_publish_search_text_changed(self, pattern, list_view, proxy_model):
+        """
+        Triggered when the text in a search editor changes.
+
+        :param pattern: new contents of search box
+        :param list_view: associated list view.
+        :param proxy_model: associated proxy model
+        """
+        # tell proxy model to reevaulate itself given the new pattern.
+        proxy_model.setFilterFixedString(pattern)
+
+        # change UI decorations based on new pattern.
+        if pattern and len(pattern) > 0:
+            # indicate with a blue border that a search is active
+            list_view.setStyleSheet("""QListView { border-width: 3px;
+                                                   border-style: solid;
+                                                   border-color: #2C93E2; }
+                                       QListView::item { padding: 6px; }
+                                    """)
+        else:
+            # revert to default style sheet
+            list_view.setStyleSheet("QListView::item { padding: 6px; }")
 
 
     def _on_entity_profile_tab_clicked(self):
@@ -1368,7 +1487,6 @@ class AppDialog(QtGui.QWidget):
 
         self.ui.entity_breadcrumbs.setText("<big>%s</big>" % breadcrumbs)
 
-
 ################################################################################################
 # Helper stuff
 
@@ -1377,10 +1495,11 @@ class EntityPreset(object):
     Little struct that represents one of the tabs / presets in the
     Left hand side entity tree view
     """
-    def __init__(self, name, entity_type, model, proxy_model, view, publish_filters):
+    def __init__(self, name, entity_type, model, proxy_model, view, publish_filters, ignore_tab):
         self.model = model
         self.proxy_model = proxy_model
         self.name = name
         self.view = view
         self.entity_type = entity_type
         self.publish_filters = publish_filters
+        self.ignore_tab = ignore_tab
