@@ -25,8 +25,6 @@ from .delegate_publish_history import SgPublishHistoryDelegate
 
 from .ui.dialog import Ui_Dialog
 
-STATUS_LIST = ['done', 'apr', 'new', 'rev', 'rchk', 'ip', 'rtk', 'omt']
-
 # import frameworks
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
 settings = sgtk.platform.import_framework("tk-framework-shotgunutils", "settings")
@@ -1534,7 +1532,8 @@ class AppDialog(QtGui.QWidget):
         
 
         self._filter_status.addItem("All (%d)" % len(valid_items))
-        for status in STATUS_LIST:
+        status_list = list(set(item['sg_item']['sg_status_list'] for item in valid_items))
+        for status in status_list:
             icon = QtGui.QIcon()
             count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
             name = "%s (%d)   " % (status, count)
