@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 # 
 # CONFIDENTIAL AND PROPRIETARY
 # 
@@ -38,6 +38,10 @@ function build_res {
 echo "building user interfaces..."
 build_ui dialog
 build_ui open_publish_form
+build_ui widget_publish_history
+build_ui widget_publish_thumb
+build_ui widget_publish_list
+build_ui search_widget
 
 # build resources
 echo "building resources..."
