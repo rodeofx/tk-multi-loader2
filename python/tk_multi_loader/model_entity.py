@@ -45,13 +45,12 @@ class SgEntityModel(ShotgunModel):
         self._entity_icons["Ticket"] = QtGui.QIcon(QtGui.QPixmap(":/res/icon_Ticket_dark.png"))
         self._entity_icons["Version"] = QtGui.QIcon(QtGui.QPixmap(":/res/icon_Version_dark.png"))
         
-        ShotgunOverlayModel.__init__(self, 
-                                     parent,
-                                     overlay_widget, 
-                                     download_thumbs=False, 
-                                     schema_generation=4,
-                                     bg_load_thumbs=True,
-                                     bg_task_manager=bg_task_manager)
+        ShotgunModel.__init__(self, 
+                              parent,
+                              download_thumbs=False, 
+                              schema_generation=4,
+                              bg_load_thumbs=True,
+                              bg_task_manager=bg_task_manager)
         fields=["image", "sg_status_list", "description"]
         self._load_data(entity_type, filters, hierarchy, fields)
 

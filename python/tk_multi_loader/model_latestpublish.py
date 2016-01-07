@@ -219,26 +219,6 @@ class SgLatestPublishModel(ShotgunModel):
         else:
             self._publish_type_field = "tank_type"
 
-        publish_fields = [self._publish_type_field,
-                          "name",
-                          "version_number",
-                          "image",
-                          "entity",
-                          "path",
-                          "description",
-                          "task",
-                          "task.Task.sg_status_list",
-                          "task.Task.due_date",
-                          "project",
-                          "task.Task.content",
-                          "created_by",
-                          "created_at",
-                          "version", # note: not supported on TankPublishedFile so always None
-                          "version.Version.sg_status_list",
-                          "created_by.HumanUser.image",
-                          "sg_status_list",
-                          ]
-
         publish_fields = [self._publish_type_field] + constants.PUBLISHED_FILES_FIELDS
 
         # first add our folders to the model
