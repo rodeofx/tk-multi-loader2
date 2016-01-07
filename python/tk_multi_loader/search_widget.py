@@ -78,7 +78,13 @@ class SearchWidget(QtGui.QWidget):
         """ % (bg_col.red(), bg_col.green(), bg_col.blue())
         
         self._ui.group.setStyleSheet(style)
-                
+
+        try:
+            # this was introduced in qt 4.7, so try to use it if we can... :)
+            self._ui.search.setPlaceholderText("Search...")
+        except:
+            pass
+
         # hook up a listener to the parent window so this widget
         # follows along when the parent window changes size
         filter = ResizeEventFilter(parent)

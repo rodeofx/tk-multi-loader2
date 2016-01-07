@@ -21,7 +21,7 @@ class Ui_SearchWidget(object):
         self.group.setObjectName("group")
         self.horizontalLayout_2 = QtGui.QHBoxLayout(self.group)
         self.horizontalLayout_2.setSpacing(0)
-        self.horizontalLayout_2.setContentsMargins(4, 15, 4, 2)
+        self.horizontalLayout_2.setContentsMargins(0, 0, 0, 0)
         self.horizontalLayout_2.setObjectName("horizontalLayout_2")
         self.search = QtGui.QLineEdit(self.group)
         self.search.setObjectName("search")
