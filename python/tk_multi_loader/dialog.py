@@ -457,9 +457,9 @@ class AppDialog(QtGui.QWidget):
             self.ui.thumbnail_mode.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/mode_switch_thumb.png")))
             self.ui.thumbnail_mode.setChecked(False)
             self.ui.publish_view.setViewMode(QtGui.QListView.ListMode)
-            self.ui.publish_view.setItemDelegate(self._publish_list_delegate)            
-            self.ui.label_2.hide()
-            self.ui.thumb_scale.hide()
+            self.ui.publish_view.setItemDelegate(self._publish_list_delegate)
+            self.ui.thumb_scale.setVisible(False)
+            self.ui.label_2.setVisible(False)
             
         elif mode == self.MAIN_VIEW_THUMB:
             self.ui.list_mode.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/mode_switch_card.png")))
@@ -468,8 +468,8 @@ class AppDialog(QtGui.QWidget):
             self.ui.thumbnail_mode.setChecked(True)
             self.ui.publish_view.setViewMode(QtGui.QListView.IconMode)
             self.ui.publish_view.setItemDelegate(self._publish_thumb_delegate)
-            self.ui.label_2.show()
-            self.ui.thumb_scale.show()
+            self.ui.thumb_scale.setVisible(True)
+            self.ui.label_2.setVisible(True)
             
         else:
             raise TankError("Undefined view mode!") 
