@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 # 
 # CONFIDENTIAL AND PROPRIETARY
 # 
@@ -130,9 +130,22 @@ class NukeActions(HookBaseClass):
         
         (_, ext) = os.path.splitext(path)
 
-        valid_extensions = [".png", ".jpg", ".jpeg", ".exr", ".cin", ".dpx", ".tiff", ".tif", ".mov"]
+        valid_extensions = [".png", 
+                            ".jpg", 
+                            ".jpeg", 
+                            ".exr", 
+                            ".cin", 
+                            ".dpx", 
+                            ".tiff", 
+                            ".tif", 
+                            ".mov", 
+                            ".psd",
+                            ".tga",
+                            ".ari",
+                            ".gif",
+                            ".iff"]
 
-        if ext not in valid_extensions:
+        if ext.lower() not in valid_extensions:
             raise Exception("Unsupported file extension for '%s'!" % path)
 
         # find the sequence range if it has one:

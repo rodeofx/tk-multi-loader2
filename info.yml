@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -140,11 +140,11 @@ description: "Locate published files and reference them into your scene."
 
 # Required minimum versions for this item to run
 requires_shotgun_version:
-requires_core_version: "v0.14.66"
+requires_core_version: "v0.16.32"
 requires_engine_version:
 
 # the frameworks required to run this app
 frameworks:
-    - {"name": "tk-framework-shotgunutils", "version": "v2.x.x"}
-    - {"name": "tk-framework-qtwidgets", "version": "v1.x.x"}
-    - {"name": "tk-framework-rdo", 'version': "vx.x.x"}
+    - {"name": "tk-framework-shotgunutils", "version": "v4.x.x"}
+    - {"name": "tk-framework-qtwidgets", "version": "v2.x.x"}
+    - {"name": "tk-framework-rdo", 'version': "v0.0.x"}
