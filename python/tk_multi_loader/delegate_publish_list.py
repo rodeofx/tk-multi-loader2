@@ -372,7 +372,8 @@ class SgPublishListDelegate(shotgun_view.EditSelectedWidgetDelegate):
         small_text = "<span style='color:#2C93E2'>%s</span> by %s at %s" % (pub_type_str, 
                                                                             author_str,
                                                                             date_str)
-        
+        small_text += "<br><b>Description:</b> %s" % sg_data.get("description") or "No description given"
+
         # and set a tooltip
         tooltip =  "<b>Name:</b> %s" % (sg_data.get("code") or "No name given.")
         tooltip += "<br><br><b>Path:</b> %s" % ((sg_data.get("path") or {}).get("local_path"))
