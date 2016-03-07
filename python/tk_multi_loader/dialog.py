@@ -188,7 +188,11 @@ class AppDialog(QtGui.QWidget):
         self._publish_list_delegate = SgPublishListDelegate(self.ui.publish_view, self._action_manager)
         
         # recall which the most recently mode used was and set that
-        main_view_mode = self._settings_manager.retrieve("main_view_mode", self.MAIN_VIEW_THUMB)
+        default_view_mode = self.MAIN_VIEW_THUMB
+        # Check value of display_thumbnail in app settings
+        if not sgtk.platform.current_bundle().get_setting("display_thumbnail"):
+            default_view_mode = self.MAIN_VIEW_LIST
+        main_view_mode = self._settings_manager.retrieve("main_view_mode", default_view_mode)
         self._set_main_view_mode(main_view_mode)
 
         # whenever the type list is checked, update the publish filters
