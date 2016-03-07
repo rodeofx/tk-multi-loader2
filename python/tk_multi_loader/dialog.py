@@ -759,6 +759,7 @@ class AppDialog(QtGui.QWidget):
 
                     # now see if our context object also exists in the tree of this profile
                     model = self._entity_presets[p].model
+
                     item = model.item_from_entity(ctx.entity["type"], ctx.entity["id"])
 
                     if item is not None:
