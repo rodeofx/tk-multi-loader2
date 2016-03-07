@@ -761,12 +761,6 @@ class AppDialog(QtGui.QWidget):
 
                     # now see if our context object also exists in the tree of this profile
                     model = self._entity_presets[p].model
-#                     if not model._cache_loaded:
-#                         #items in model are not not loaded yet, create callback and wait for it
-#                         if self._first_home_click.get('call_from_load', False):
-#                             self._first_home_click['model'] = model
-#                             model.data_refreshed.connect(self.functionCB)
-#                             return
 
                     item = model.item_from_entity(ctx.entity["type"], ctx.entity["id"])
 
