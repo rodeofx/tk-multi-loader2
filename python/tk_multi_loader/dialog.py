@@ -214,23 +214,6 @@ class AppDialog(QtGui.QWidget):
         self.ui.publish_view.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 
         #################################################
-        # popdown publish filter widget for the main view
-        # note:
-        # we parent the widget to a frame that flows around the 
-        # main publish area - this is in order to avoid a scenario
-        # where the overlay that sometimes pops up on top of the 
-        # publish area and the search widget would be competing
-        # for the same z-index. The result in some of these cases 
-        # is that the search widget is hidden under the "publishes
-        # not found" overlay. By having it parented to the frame 
-        # instead, it will always be above the overlay.
-#         self._search_widget = SearchWidget(self.ui.publish_frame)
-        # hook it up with the search button the main toolbar
-#         self.ui.search_publishes.clicked.connect(self._on_publish_filter_clicked)
-        # hook it up so that it signals the publish proxy model whenever the filter changes
-#         self._search_widget.filter_changed.connect(self._publish_proxy_model.set_search_query)
-
-        #################################################
         # checkboxes, buttons etc
         self.ui.show_sub_items.toggled.connect(self._on_show_subitems_toggled)
 
@@ -437,17 +420,6 @@ class AppDialog(QtGui.QWidget):
                                                                              self._action_manager.UI_AREA_HISTORY)
         if default_action:
             default_action.trigger()
-
-    def _on_publish_filter_clicked(self):
-        """
-        Executed when someone clicks the filter button in the main UI
-        """        
-        if self.ui.search_publishes.isChecked():
-            self.ui.search_publishes.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/search_active.png")))
-            self._search_widget.enable()
-        else:
-            self.ui.search_publishes.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/search.png")))
-            self._search_widget.disable()
 
     def _on_thumbnail_mode_clicked(self):
         """
