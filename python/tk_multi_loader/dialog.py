@@ -278,7 +278,6 @@ class AppDialog(QtGui.QWidget):
         self.ui.middle_area.insertLayout(1, hlayout,)
         self._add_rdo_status_filter(hlayout)
         hlayout.addItem(spacerItem)
-        self._add_rdo_publish_search(hlayout)
 
         # Publishes search widget
         self._search_widget = SearchWidget(self.ui.publish_view, self.ui.publish_frame)
@@ -1238,35 +1237,6 @@ class AppDialog(QtGui.QWidget):
         hlayout.addWidget(filter_label)
         hlayout.addWidget(self._filter_status)
         self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
-
-    def _add_rdo_publish_search(self, hlayout):
-        '''
-        Add a search box to the middle area to filter the latest publishes
-        It's a ripoff the entity search box but hooked to publish proxy model
-        '''
-
-        search = SearchWidget(self)
-        hlayout.addWidget(search)
-        search.enable()
-
-        # Clear button
-        clear_search = QtGui.QToolButton()
-        icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap(":/res/clear_search.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-        clear_search.setIcon(icon)
-        clear_search.setAutoRaise(True)
-        clear_search.setToolTip("Click to clear your current search.")
-        hlayout.addWidget(clear_search)
-
-        # Signals
-        search.filter_changed.connect(self._publish_proxy_model.set_search_query)
-        clear_search.clicked.connect( lambda editor=search: editor._ui.search.setText("") )
-
-        # Hide default search widget button
-        self.ui.search_publishes.hide()
-
-        self._dynamic_widgets.extend([hlayout, search, clear_search, icon])
-
 
     def _on_entity_profile_tab_clicked(self):
         """
