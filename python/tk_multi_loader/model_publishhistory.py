@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -11,13 +11,13 @@
 import sgtk
 from sgtk.platform.qt import QtCore, QtGui
 
-from . import utils
+from . import utils, constants
 
 # import the shotgun_model module from the shotgun utils framework
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
-ShotgunOverlayModel = shotgun_model.ShotgunOverlayModel
+ShotgunModel = shotgun_model.ShotgunModel
 
-class SgPublishHistoryModel(ShotgunOverlayModel):
+class SgPublishHistoryModel(ShotgunModel):
     """
     This model represents the version history for a publish.
     """
@@ -25,18 +25,19 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
     USER_THUMB_ROLE = QtCore.Qt.UserRole + 101
     PUBLISH_THUMB_ROLE = QtCore.Qt.UserRole + 102
 
-    def __init__(self, parent, overlay_widget):
+    def __init__(self, parent, bg_task_manager):
         """
         Constructor
         """
         # folder icon
         self._loading_icon = QtGui.QPixmap(":/res/loading_100x100.png")
         app = sgtk.platform.current_bundle()
-        ShotgunOverlayModel.__init__(self,
-                                     parent,
-                                     overlay_widget,
-                                     download_thumbs=app.get_setting("download_thumbnails"),
-                                     schema_generation=2)
+        ShotgunModel.__init__(self,
+                              parent,
+                              download_thumbs=app.get_setting("download_thumbnails"),
+                              schema_generation=2,
+                              bg_load_thumbs=True,
+                              bg_task_manager=bg_task_manager)
 
 
     ############################################################################################
@@ -59,22 +60,7 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
             publish_type_field = "tank_type"
 
         # fields to pull down
-        fields = [publish_type_field,
-                  "name",
-                  "version_number",
-                  "image",
-                  "entity",
-                  "path",
-                  "description",
-                  "task",
-                  "task.Task.sg_status_list",
-                  "task.Task.due_date",
-                  "task.Task.content",
-                  "created_by",
-                  "created_at",
-                  "version", # note: not supported on TankPublishedFile so always None
-                  "version.Version.sg_status_list",
-                  "created_by.HumanUser.image"]
+        fields = [publish_type_field] + constants.PUBLISHED_FILES_FIELDS
 
         # when we filter out which other publishes are associated with this one,
         # to effectively get the "version history", we look for items
@@ -90,11 +76,11 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
         pub_filters = app.get_setting("publish_filters", [])
         filters.extend(pub_filters)
 
-        ShotgunOverlayModel._load_data(self,
-                                       entity_type=publish_entity_type,
-                                       filters=filters,
-                                       hierarchy=["version_number"],
-                                       fields=fields)
+        ShotgunModel._load_data(self,
+                                entity_type=publish_entity_type,
+                                filters=filters,
+                                hierarchy=["version_number"],
+                                fields=fields)
 
         self._refresh_data()
 
@@ -143,6 +129,19 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
                                              sg_data["created_by"]["id"])
 
 
+    def _before_data_processing(self, sg_data_list):
+        """
+        Called just after data has been retrieved from Shotgun but before any processing
+        takes place. This makes it possible for deriving classes to perform summaries,
+        calculations and other manipulations of the data before it is passed on to the model
+        class.
+
+        :param sg_data_list: list of shotgun dictionaries, as returned by the find() call.
+        :returns: should return a list of shotgun dictionaries, on the same form as the input.
+        """
+        app = sgtk.platform.current_bundle()
+
+        return utils.filter_publishes(app, sg_data_list)
 
 
     def _populate_default_thumbnail(self, item):
@@ -159,7 +158,7 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
                                                               None)
         item.setIcon(QtGui.QIcon(thumb))
 
-    def _populate_thumbnail(self, item, field, path):
+    def _populate_thumbnail_image(self, item, field, image, path):
         """
         Called whenever a thumbnail for an item has arrived on disk. In the case of
         an already cached thumbnail, this may be called very soon after data has been
@@ -182,10 +181,10 @@ class SgPublishHistoryModel(ShotgunOverlayModel):
         :param path: A path on disk to the thumbnail. This is a file in jpeg format.
         """
         if field == "image":
-            thumb = QtGui.QPixmap(path)
+            thumb = QtGui.QPixmap.fromImage(image)
             item.setData(thumb, SgPublishHistoryModel.PUBLISH_THUMB_ROLE)
         else:
-            thumb = QtGui.QPixmap(path)
+            thumb = QtGui.QPixmap.fromImage(image)
             item.setData(thumb, SgPublishHistoryModel.USER_THUMB_ROLE)
 
         # composite the user thumbnail and the publish thumb into a single image

@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2015 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -12,14 +12,13 @@ from collections import defaultdict
 from sgtk.platform.qt import QtCore, QtGui
 
 import sgtk
-from . import utils
-from .model_entity import SgEntityModel
+from . import utils, constants
 
 # import the shotgun_model module from the shotgun utils framework
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
-ShotgunOverlayModel = shotgun_model.ShotgunOverlayModel
+ShotgunModel = shotgun_model.ShotgunModel
 
-class SgLatestPublishModel(ShotgunOverlayModel):
+class SgLatestPublishModel(ShotgunModel):
 
     """
     Model which handles the main spreadsheet view which displays the latest version of all
@@ -32,13 +31,13 @@ class SgLatestPublishModel(ShotgunOverlayModel):
     IS_FOLDER_ROLE = QtCore.Qt.UserRole + 102
     ASSOCIATED_TREE_VIEW_ITEM_ROLE = QtCore.Qt.UserRole + 103
     PUBLISH_TYPE_NAME_ROLE = QtCore.Qt.UserRole + 104
+    SEARCHABLE_NAME = QtCore.Qt.UserRole + 105
 
-    def __init__(self, parent, overlay_widget, publish_type_model):
+    def __init__(self, parent, publish_type_model, bg_task_manager):
         """
         Model which represents the latest publishes for an entity
         """
         self._publish_type_model = publish_type_model
-        self._no_pubs_found_icon = QtGui.QPixmap(":/res/no_publishes_found.png")
         self._folder_icon = QtGui.QIcon(QtGui.QPixmap(":/res/folder_512x400.png"))
         self._loading_icon = QtGui.QIcon(QtGui.QPixmap(":/res/loading_512x400.png"))
         self._publish_items = []
@@ -47,11 +46,12 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         app = sgtk.platform.current_bundle()
 
         # init base class
-        ShotgunOverlayModel.__init__(self,
-                                     parent,
-                                     overlay_widget,
-                                     download_thumbs=app.get_setting("download_thumbnails"),
-                                     schema_generation=5)
+        ShotgunModel.__init__(self,
+                              parent,
+                              download_thumbs=app.get_setting("download_thumbnails"),
+                             schema_generation=6,
+                             bg_load_thumbs=True,
+                             bg_task_manager=bg_task_manager)
 
     ############################################################################################
     # public interface
@@ -192,15 +192,6 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         # folders to load, set up the actual model
         self._do_load_data(sg_filters, child_folders)
 
-    def toggle_not_found_overlay(self, show):
-        """
-        Displays the items not found overlay.
-        """
-        if show:
-            self._show_overlay_pixmap(self._no_pubs_found_icon)
-        else:
-            self._hide_overlay_info()
-
     def async_refresh(self):
         """
         Refresh the current data set
@@ -228,38 +219,19 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         else:
             self._publish_type_field = "tank_type"
 
-        publish_fields = [self._publish_type_field,
-                          "name",
-                          "version_number",
-                          "image",
-                          "entity",
-                          "path",
-                          "description",
-                          "task",
-                          "task.Task.sg_status_list",
-                          "task.Task.due_date",
-                          "project",
-                          "task.Task.content",
-                          "created_by",
-                          "created_at",
-                          "version", # note: not supported on TankPublishedFile so always None
-                          "version.Version.sg_status_list",
-                          "created_by.HumanUser.image",
-                          "sg_status_list",
-                          ]
-
+        publish_fields = [self._publish_type_field] + constants.PUBLISHED_FILES_FIELDS
 
         # first add our folders to the model
         # make gc happy by keeping handle to all items
         self._treeview_folder_items = treeview_folder_items
 
         # load cached data
-        ShotgunOverlayModel._load_data(self,
-                                       entity_type=publish_entity_type,
-                                       filters=sg_filters,
-                                       hierarchy=["code"],
-                                       fields=publish_fields,
-                                       order=[{"field_name":"created_at", "direction":"asc"}])
+        ShotgunModel._load_data(self,
+                               entity_type=publish_entity_type,
+                               filters=sg_filters,
+                               hierarchy=["code"],
+                               fields=publish_fields,
+                               order=[{"field_name":"created_at", "direction":"asc"}])
 
         # now calculate type aggregates
         type_id_aggregates = defaultdict(int)
@@ -295,6 +267,9 @@ class SgLatestPublishModel(ShotgunOverlayModel):
 
             # create an item in the publish item for each folder item in the tree view
             item = shotgun_model.ShotgunStandardItem(self._folder_icon, tree_view_item.text())
+            
+            # make the item searchable by name
+            item.setData(tree_view_item.text(), SgLatestPublishModel.SEARCHABLE_NAME)
 
             # all of the items created in this class get special role data assigned.
             item.setData(True, SgLatestPublishModel.IS_FOLDER_ROLE)
@@ -341,16 +316,27 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         # indicate that shotgun data is NOT folder data
         item.setData(False, SgLatestPublishModel.IS_FOLDER_ROLE)
 
+        # start figuring out the searchable tokens for this item
+        search_str = "" 
+
         # add the associated publish type (both id and name) as special roles
         type_link = sg_data.get(self._publish_type_field)
         if type_link:
             item.setData(type_link["id"], SgLatestPublishModel.TYPE_ID_ROLE)
             item.setData(type_link["name"], SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE)
+            search_str += "%s " % type_link["name"]
         else:
             item.setData(None, SgLatestPublishModel.TYPE_ID_ROLE)
             item.setData("No Type", SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE)
-
-
+            
+        # add name and version to search string            
+        if sg_data.get("name"):
+            search_str += " %s" % sg_data["name"]
+        if sg_data.get("version_number"):
+            # add this in as "v012" to make it easy to search for say all versions 12 but
+            # exclude v112:s
+            search_str += " v%03d" % sg_data["version_number"]
+        item.setData(search_str, SgLatestPublishModel.SEARCHABLE_NAME)
 
     def _populate_default_thumbnail(self, item):
         """
@@ -364,7 +350,7 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         # set up publishes with a "thumbnail loading" icon
         item.setIcon(self._loading_icon)
 
-    def _populate_thumbnail(self, item, field, path):
+    def _populate_thumbnail_image(self, item, field, image, path):
         """
         Called whenever a thumbnail for an item has arrived on disk. In the case of
         an already cached thumbnail, this may be called very soon after data has been
@@ -398,9 +384,9 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         is_folder = item.data(SgLatestPublishModel.IS_FOLDER_ROLE)
         if is_folder:
             # composite the thumbnail nicely on top of the folder icon
-            thumb = utils.create_overlayed_folder_thumbnail(path)
+            thumb = utils.create_overlayed_folder_thumbnail(image)
         else:
-            thumb = utils.create_overlayed_publish_thumbnail(path)
+            thumb = utils.create_overlayed_publish_thumbnail(image)
         item.setIcon(QtGui.QIcon(thumb))
 
     def _before_data_processing(self, sg_data_list):
@@ -410,35 +396,14 @@ class SgLatestPublishModel(ShotgunOverlayModel):
         calculations and other manipulations of the data before it is passed on to the model
         class.
 
-        :param sg_data_list: list of shotgun dictionaries, as retunrned by the find() call.
+        :param sg_data_list: list of shotgun dictionaries, as returned by the find() call.
         :returns: should return a list of shotgun dictionaries, on the same form as the input.
         """
         app = sgtk.platform.current_bundle()
 
-        try:
-            # first, let the filter_publishes_hook have a chance to filter
-            # the list of publishes:
-
-            # Constructing a wrapper dictionary so that it's future proof to support returning
-            # additional information from the hook
-            hook_publish_list = [{"sg_publish":sg_data} for sg_data in sg_data_list]
-
-            hook_publish_list = app.execute_hook("filter_publishes_hook", publishes=hook_publish_list)
-            if not isinstance(hook_publish_list, list):
-                app.log_error("hook_filter_publishes returned an unexpected result type '%s' - ignoring!"
-                              % type(hook_publish_list).__name__)
-                hook_publish_list = []
-
-            # split back out publishes:
-            sg_data_list = []
-            for item in hook_publish_list:
-                sg_data = item.get("sg_publish")
-                if sg_data:
-                    sg_data_list.append(sg_data)
-
-        except Exception:
-            app.log_exception("Failed to execute 'filter_publishes_hook'!")
-            sg_data_list = []
+        # First, let the filter_publishes hook have a chance to filter the list
+        # of publishes:
+        sg_data_list = utils.filter_publishes(app, sg_data_list)
 
         # filter the shotgun data so that we only return the latest publish for each file.
         # also perform aggregate computations and push those summaries into the associated
