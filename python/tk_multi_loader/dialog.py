@@ -760,6 +760,13 @@ class AppDialog(QtGui.QWidget):
 
                     # now see if our context object also exists in the tree of this profile
                     model = self._entity_presets[p].model
+                    if not model.is_data_cached():
+                        app = sgtk.platform.current_bundle()
+                        app.log_info('Cache not loaded!')
+                        #items in model are not not loaded yet, create callback and wait for it
+                        if self._first_home_click.get('call_from_load', False):
+                            self._first_home_click['model'] = model
+                            model.data_refreshed.connect(self.functionCB)
 
                     item = model.item_from_entity(ctx.entity["type"], ctx.entity["id"])
 
@@ -781,7 +788,10 @@ class AppDialog(QtGui.QWidget):
         self._select_item_in_entity_tree(found_preset, found_item)
 
     def functionCB(self):
-        app = sgtk.platform.current_bundle()
+        """
+        Callback used only once at app startup, to ensure that we are displaying
+        the items in the publish model once they are loaded.
+        """
         self._first_home_click['model'].data_refreshed.disconnect(self.functionCB)
         self._first_home_click = {}
         self._on_home_clicked()
