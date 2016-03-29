@@ -763,7 +763,7 @@ class AppDialog(QtGui.QWidget):
                     if not model.is_data_cached():
                         app = sgtk.platform.current_bundle()
                         app.log_info('Cache not loaded!')
-                        #items in model are not not loaded yet, create callback and wait for it
+                        # Items in model are not loaded yet, create a callback and wait for it
                         if self._first_home_click.get('call_from_load', False):
                             self._first_home_click['model'] = model
                             model.data_refreshed.connect(self.functionCB)
