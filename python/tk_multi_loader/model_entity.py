@@ -54,6 +54,12 @@ class SgEntityModel(ShotgunModel):
         fields=["image", "sg_status_list", "description"]
         self._load_data(entity_type, filters, hierarchy, fields)
 
+        # this dict holds entity which was selected in dialog after model was filled. This selection
+        # is result of self._on_home_clicked() executed at last line of _load_entity_presets()
+        # reSelector will be used only once in data_refreshed_cb to restore selection if items in model
+        # were destroyed and created again as result of differences between local shotgun disc cache
+        # and actual shotgun data
+        # see __on_sg_data_arrived(...) in class ShotgunModel
         self.reSelector = {'entity': None,
                            'found_preset': None,
                            'dialog': parent,
