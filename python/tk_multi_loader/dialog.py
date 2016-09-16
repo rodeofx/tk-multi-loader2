@@ -283,7 +283,7 @@ class AppDialog(QtGui.QWidget):
         # Publishes search widget
         self._search_widget = SearchWidget(self.ui.publish_view, self.ui.publish_frame)
         hlayout.addWidget(self._search_widget)
-        self._search_widget.filter_changed.connect(self._publish_proxy_model.set_search_query)
+        self._search_widget.filter_changed.connect(lambda filter: self._publish_proxy_model.set_search_query(str(filter)))
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()

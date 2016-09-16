@@ -46,7 +46,7 @@ class PublishThumbWidget(PublishWidget):
         """
         msg = "<b>%s</b><br>%s" % (header, body)
         self.ui.label.setText(msg)
-        self.ui.thumbnail.setToolTip(tooltip)    
+        self.ui.thumbnail.setToolTip(tooltip)
 
     @staticmethod
     def calculate_size(scale_factor):
