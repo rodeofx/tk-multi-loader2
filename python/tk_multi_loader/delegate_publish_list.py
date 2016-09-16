@@ -40,10 +40,11 @@ class PublishListWidget(PublishWidget):
         :param large_text: Header text as string
         :param small_text: smaller text as string
         :param tooltip: Tooltip text    
-        """    
+        """
         self.ui.label_1.setText(large_text)
         self.ui.label_2.setText(small_text)
-        self.setToolTip(tooltip)
+        self.ui.label_1.setToolTip(tooltip)
+        self.ui.label_2.setToolTip(tooltip)
 
     @staticmethod
     def calculate_size():
@@ -226,6 +227,7 @@ class SgPublishListDelegate(PublishDelegate):
         small_text = "<span style='color:#2C93E2'>%s</span> by %s at %s" % (pub_type_str, 
                                                                             author_str,
                                                                             date_str)
+        small_text += "<br><b>Description:</b> %s" % (sg_data.get("description") or "No description given")
 
         # and set a tooltip
         tooltip =  "<b>Name:</b> %s" % (sg_data.get("code") or "No name given.")
