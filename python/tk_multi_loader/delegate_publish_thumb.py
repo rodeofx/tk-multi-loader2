@@ -65,13 +65,18 @@ class PublishThumbWidget(QtGui.QWidget):
         
         :param actions: List of QActions to add
         """
-        if len(actions) == 0:
-            self.ui.button.setVisible(False)
-        else:
-            self.ui.button.setVisible(True)
+        if len(actions) > 0:
             self._actions = actions
             for a in self._actions:
                 self._menu.addAction(a)
+
+    def set_button_visible(self, is_visible):
+        """
+        Shows or hides the action button.
+
+        :param is_visible: If True, button will be shown, hidden otherwise.
+        """
+        self.ui.button.setVisible(is_visible)
     
     def set_selected(self, selected):
         """
@@ -183,6 +188,7 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
             # a folder widget with shotgun data
             widget.set_actions( self._action_manager.get_actions_for_folder(sg_item) )
         else:
+
             # publish!
             actions = self._action_manager.get_actions_for_publish(sg_item, self._action_manager.UI_AREA_MAIN)
             widget.set_actions(actions)
@@ -200,7 +206,14 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
         :param model_index: The model index to operate on
         :param style_options: QT style options
         """
-        widget.set_selected(self._view.selectionModel().isSelected(model_index))
+        is_selected = self._view.selectionModel().isSelected(model_index)
+        widget.set_selected(is_selected)
+
+        # Only show actions if the selection only has a single item AND this item is the one selected.
+        if is_selected and len(self._view.selectionModel().selectedIndexes()) == 1:
+            widget.set_button_visible(True)
+        else:
+            widget.set_button_visible(False)
 
         icon = shotgun_model.get_sanitized_data(model_index, QtCore.Qt.DecorationRole)
         sg_data = shotgun_model.get_sg_data(model_index)

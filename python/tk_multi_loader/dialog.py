@@ -302,7 +302,7 @@ class AppDialog(QtGui.QWidget):
         try:
             menu.addActions(actions)
 
-            # Qt is out friend here. If there are no actions available, the separator won't be added, yay!
+            # Qt is our friend here. If there are no actions available, the separator won't be added, yay!
             menu.addSeparator()
             menu.addAction(self._refresh_action)
 
