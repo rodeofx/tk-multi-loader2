@@ -34,27 +34,27 @@ class PublishListWidget(QtGui.QWidget):
 
         # make sure this widget isn't shown
         self.setVisible(False)
-        
+
         # set up the UI
-        self.ui = Ui_PublishListWidget() 
+        self.ui = Ui_PublishListWidget()
         self.ui.setupUi(self)
-        
+
         # set up action menu
-        self._menu = QtGui.QMenu()   
-        self._actions = []             
+        self._menu = QtGui.QMenu()
+        self._actions = []
         self.ui.button.setMenu(self._menu)
         self.ui.button.setVisible(False)
-        
+
         # compute hilight colors
         p = QtGui.QPalette()
         highlight_col = p.color(QtGui.QPalette.Active, QtGui.QPalette.Highlight)
-        self._highlight_str = "rgb(%s, %s, %s)" % (highlight_col.red(), 
-                                                   highlight_col.green(), 
+        self._highlight_str = "rgb(%s, %s, %s)" % (highlight_col.red(),
+                                                   highlight_col.green(),
                                                    highlight_col.blue())
-        self._transp_highlight_str = "rgba(%s, %s, %s, 25%%)" % (highlight_col.red(), 
-                                                                 highlight_col.green(), 
+        self._transp_highlight_str = "rgba(%s, %s, %s, 25%%)" % (highlight_col.red(),
+                                                                 highlight_col.green(),
                                                                  highlight_col.blue())
-        
+
     def set_actions(self, actions):
         """
         Adds a list of QActions to add to the actions menu for this widget.
