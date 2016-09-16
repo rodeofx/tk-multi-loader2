@@ -18,6 +18,7 @@ class PublishWidget(QtGui.QWidget):
         """
         Constructor
 
+        :param widget_factory: 
         :param parent: QT parent object
         """
         QtGui.QWidget.__init__(self, parent)

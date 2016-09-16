@@ -36,17 +36,15 @@ class PublishThumbWidget(PublishWidget):
         """
         PublishWidget.__init__(self, Ui_PublishThumbWidget, parent)
 
-    def set_text(self, header, body, tooltip):
+    def set_text(self, header, body):
         """
         Populate the lines of text in the widget
         
         :param header: Header text as string
         :param body: Body text as string
-        :param tooltip: Tooltip text
         """
         msg = "<b>%s</b><br>%s" % (header, body)
         self.ui.label.setText(msg)
-        self.ui.thumbnail.setToolTip(tooltip)
 
     @staticmethod
     def calculate_size(scale_factor):
@@ -200,25 +198,6 @@ class SgPublishThumbDelegate(PublishDelegate):
         # make this the title of the card
         header_text = name_str
 
-        # and set a tooltip
-        tooltip = "<b>Name:</b> %s" % (sg_data.get("code") or "No name given.")
-        # Version 012 by John Smith at 2014-02-23 10:34
-        created_unixtime = sg_data.get("created_at") or 0
-        date_str = datetime.datetime.fromtimestamp(created_unixtime).strftime('%Y-%m-%d %H:%M')
-
-        # created_by is set to None if the user has been deleted.
-        if sg_data.get("created_by") and sg_data["created_by"].get("name"):
-            author_str = sg_data["created_by"].get("name")
-        else:
-            author_str = "Unspecified User"
-        tooltip += "<br><br><b>Version:</b> %03d by %s at %s" % (
-            sg_data.get("version_number"),
-            author_str,
-            date_str
-        )
-        tooltip += "<br><br><b>Path:</b> %s" % ((sg_data.get("path") or {}).get("local_path"))
-        tooltip += "<br><br><b>Description:</b> %s" % (sg_data.get("description") or "No description given.")
-
         # check if we are in "deep mode". In that case, display the entity link info
         # on the thumb card. Otherwise, display the type.
         if self._sub_items_mode:
@@ -242,7 +221,7 @@ class SgPublishThumbDelegate(PublishDelegate):
             details_text = shotgun_model.get_sanitized_data(model_index,
                                                             SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE)
 
-        widget.set_text(header_text, details_text, tooltip)
+        widget.set_text(header_text, details_text)
 
     def sizeHint(self, style_options, model_index):
         """

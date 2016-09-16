@@ -33,18 +33,15 @@ class PublishListWidget(PublishWidget):
         """
         PublishWidget.__init__(self, Ui_PublishListWidget, parent)
 
-    def set_text(self, large_text, small_text, tooltip):
+    def set_text(self, large_text, small_text):
         """
         Populate the lines of text in the widget
         
         :param large_text: Header text as string
         :param small_text: smaller text as string
-        :param tooltip: Tooltip text    
         """
         self.ui.label_1.setText(large_text)
         self.ui.label_2.setText(small_text)
-        self.ui.label_1.setToolTip(tooltip)
-        self.ui.label_2.setToolTip(tooltip)
 
     @staticmethod
     def calculate_size():
@@ -138,7 +135,7 @@ class SgPublishListDelegate(PublishDelegate):
             main_text = "<b>%s</b> <b style='color:#2C93E2'>%s</b>" % (sg_data["type"], field_value)
             small_text = sg_data.get("description") or "No description given."
 
-        widget.set_text(main_text, small_text, tooltip="")
+        widget.set_text(main_text, small_text)
 
     def _format_publish(self, model_index, widget):
         """
@@ -229,12 +226,7 @@ class SgPublishListDelegate(PublishDelegate):
                                                                             date_str)
         small_text += "<br><b>Description:</b> %s" % (sg_data.get("description") or "No description given")
 
-        # and set a tooltip
-        tooltip =  "<b>Name:</b> %s" % (sg_data.get("code") or "No name given.")
-        tooltip += "<br><br><b>Path:</b> %s" % ((sg_data.get("path") or {}).get("local_path"))
-        tooltip += "<br><br><b>Description:</b> %s" % (sg_data.get("description") or "No description given.")        
-
-        widget.set_text(main_text, small_text, tooltip)        
+        widget.set_text(main_text, small_text)        
 
     def sizeHint(self, style_options, model_index):
         """
