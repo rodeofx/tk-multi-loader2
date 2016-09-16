@@ -291,6 +291,7 @@ class AppDialog(QtGui.QWidget):
     def _show_publish_actions(self, pos):
         """
         Shows the actions for the current publish selection.
+
         :param pos: Local coordinates inside the viewport when the context menu was requested.
         """
 
@@ -299,20 +300,14 @@ class AppDialog(QtGui.QWidget):
         actions = self._action_manager.get_actions_for_publishes(
             self.selected_publishes, self._action_manager.UI_AREA_MAIN
         )
-        try:
-            menu.addActions(actions)
+        menu.addActions(actions)
 
-            # Qt is our friend here. If there are no actions available, the separator won't be added, yay!
-            menu.addSeparator()
-            menu.addAction(self._refresh_action)
+        # Qt is our friend here. If there are no actions available, the separator won't be added, yay!
+        menu.addSeparator()
+        menu.addAction(self._refresh_action)
 
-            # Wait for the user to pick something.
-            menu.exec_(self.ui.publish_view.mapToGlobal(pos))
-        finally:
-            # QMenu doesn't own the actions, so make sure that Qt will delete them. This avoids crashes in certain
-            # DCCs.
-            for a in actions:
-                a.deleteLater()
+        # Wait for the user to pick something.
+        menu.exec_(self.ui.publish_view.mapToGlobal(pos))
 
     @property
     def selected_publishes(self):
@@ -931,7 +926,6 @@ class AppDialog(QtGui.QWidget):
 
         if len(selected_indexes) == 0:
             self._setup_details_panel(None)
-
         else:
             model_index = selected_indexes[0]
             # the incoming model index is an index into our proxy model

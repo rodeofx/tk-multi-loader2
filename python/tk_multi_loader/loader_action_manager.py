@@ -151,29 +151,29 @@ class LoaderActionManager(ActionManager):
 
         # ... and then we'll remove actions from that set as we encounter entities without those actions.
 
-        # We've already processed the first entry, no need to intersect with itself.
-        sg_data_list = sg_data_list[1:]
+        # So, for each entity in the selection...
+        for sg_data in sg_data_list[1:]:
 
-        # So, for each action in the initial intersection...
-        #
-        # Get a copy of the keys because we're about to remove keys
-        # as they are visited if an action is not common to every action.
-        for name in intersection_actions_per_name.keys():
+            # Get all the actions for the current publish
+            publish_actions = self._get_named_actions_for_publish(
+                sg_data, self.UI_AREA_DETAILS
+            )
 
-            # Check if the other entities have the same actions
-            for sg_data in sg_data_list:
-                entity_actions = self._get_named_actions_for_publish(
-                   sg_data, self.UI_AREA_DETAILS
-                )
-                # If the current action is part of this entity's actions, then track that
-                # entity's action parameters.
-                if name in entity_actions:
-                    intersection_actions_per_name[name].append((sg_data, action))
+            # Check if the actions from the intersection are available for this publish
+            #
+            # Get a copy of the keys because we're about to remove items as they are visited.
+            for name in intersection_actions_per_name.keys():
+                # If the action is available for that publish, add the publish's action to the intersection
+                publish_action = publish_actions.get(name)
+                if publish_action:
+                    intersection_actions_per_name[name].append((sg_data, publish_action))
                 else:
                     # Otherwise remove this action from the intersection
                     del intersection_actions_per_name[name]
-                    # No need to look for the remaining entities, this action is out of the intersection.
-                    break
+
+            # Early out, happens if the intersection has been made empty.
+            if not intersection_actions_per_name:
+                break
 
         # For every actions in the intersection, create an associated QAction with appropriate callback
         # and hook parameters.
