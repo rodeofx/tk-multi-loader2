@@ -173,8 +173,6 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
         # do std drawing first
         self._on_before_paint(widget, model_index, style_options)
 
-        widget.set_selected(True)
-
         # now set up actions menu
         sg_item = shotgun_model.get_sg_data(model_index)
         is_folder = shotgun_model.get_sanitized_data(model_index, SgLatestPublishModel.IS_FOLDER_ROLE)
@@ -202,6 +200,8 @@ class SgPublishThumbDelegate(shotgun_view.EditSelectedWidgetDelegate):
         :param model_index: The model index to operate on
         :param style_options: QT style options
         """
+        widget.set_selected(self._view.selectionModel().isSelected(model_index))
+
         icon = shotgun_model.get_sanitized_data(model_index, QtCore.Qt.DecorationRole)
         sg_data = shotgun_model.get_sg_data(model_index)
 

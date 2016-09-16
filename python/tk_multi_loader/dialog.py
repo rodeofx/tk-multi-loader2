@@ -204,14 +204,15 @@ class AppDialog(QtGui.QWidget):
         # note! Because of some GC issues (maya 2012 Pyside), need to first establish
         # a direct reference to the selection model before we can set up any signal/slots
         # against it
+        self.ui.publish_view.setSelectionMode(QtGui.QAbstractItemView.ExtendedSelection)
         self._publish_view_selection_model = self.ui.publish_view.selectionModel()
         self._publish_view_selection_model.selectionChanged.connect(self._on_publish_selection)
 
         # set up right click menu for the main publish view
         self._refresh_action = QtGui.QAction("Refresh", self.ui.publish_view)
         self._refresh_action.triggered.connect(self._publish_model.async_refresh)
-        self.ui.publish_view.addAction(self._refresh_action)
-        self.ui.publish_view.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
+        self.ui.publish_view.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.ui.publish_view.customContextMenuRequested.connect(self._show_publish_actions)
 
         #################################################
         # checkboxes, buttons etc
@@ -287,6 +288,32 @@ class AppDialog(QtGui.QWidget):
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
 
+    def _show_publish_actions(self, pos):
+        """
+        Shows the actions for the current publish selection.
+        :param pos: Local coordinates inside the viewport when the context menu was requested.
+        """
+
+        # Build a menu with all the actions.
+        menu = QtGui.QMenu(self)
+        actions = self._action_manager.get_actions_for_publishes(
+            self.selected_publishes, self._action_manager.UI_AREA_MAIN
+        )
+        try:
+            menu.addActions(actions)
+
+            # Qt is out friend here. If there are no actions available, the separator won't be added, yay!
+            menu.addSeparator()
+            menu.addAction(self._refresh_action)
+
+            # Wait for the user to pick something.
+            menu.exec_(self.ui.publish_view.mapToGlobal(pos))
+        finally:
+            # QMenu doesn't own the actions, so make sure that Qt will delete them. This avoids crashes in certain
+            # DCCs.
+            for a in actions:
+                a.deleteLater()
+
     @property
     def selected_publishes(self):
         """
@@ -310,28 +337,32 @@ class AppDialog(QtGui.QWidget):
             sg_data = item.get_sg_data()
             if sg_data:
                 return [sg_data]
-            
+
+        sg_data_list = []
+
         # nothing selected in the details view so check to see if something is selected 
         # in the main publish view:
         selection_model = self.ui.publish_view.selectionModel()
         if selection_model.hasSelection():
-            # only handle single selection atm
-            proxy_index = selection_model.selection().indexes()[0]
 
-            # the incoming model index is an index into our proxy model
-            # before continuing, translate it to an index into the
-            # underlying model
-            source_index = proxy_index.model().mapToSource(proxy_index)
+            for proxy_index in selection_model.selection().indexes():
 
-            # now we have arrived at our model derived from StandardItemModel
-            # so let's retrieve the standarditem object associated with the index
-            item = source_index.model().itemFromIndex(source_index)
-        
-            sg_data = item.get_sg_data()
-            if sg_data and not item.data(SgLatestPublishModel.IS_FOLDER_ROLE):
-                return [sg_data]
-            
-        return []
+                # the incoming model index is an index into our proxy model
+                # before continuing, translate it to an index into the
+                # underlying model
+                source_index = proxy_index.model().mapToSource(proxy_index)
+
+                # now we have arrived at our model derived from StandardItemModel
+                # so let's retrieve the standarditem object associated with the index
+                item = source_index.model().itemFromIndex(source_index)
+
+                sg_data = item.get_sg_data()
+
+                sg_data = item.get_sg_data()
+                if sg_data and not item.data(SgLatestPublishModel.IS_FOLDER_ROLE):
+                    sg_data_list.append(sg_data)
+
+        return sg_data_list
 
 
 
@@ -902,9 +933,7 @@ class AppDialog(QtGui.QWidget):
             self._setup_details_panel(None)
 
         else:
-            # get the currently selected model index
             model_index = selected_indexes[0]
-
             # the incoming model index is an index into our proxy model
             # before continuing, translate it to an index into the
             # underlying model
@@ -914,6 +943,7 @@ class AppDialog(QtGui.QWidget):
             # now we have arrived at our model derived from StandardItemModel
             # so let's retrieve the standarditem object associated with the index
             item = source_index.model().itemFromIndex(source_index)
+
             self._setup_details_panel(item)
 
         # emit the selection changed signal:
