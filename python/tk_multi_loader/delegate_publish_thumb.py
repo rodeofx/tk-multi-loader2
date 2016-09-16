@@ -77,7 +77,6 @@ class SgPublishThumbDelegate(PublishDelegate):
 
         header_text = ""
         details_text = ""
-        tooltip = ""
 
         # this is a folder item, injected into the publish model from the entity tree
 
@@ -120,7 +119,7 @@ class SgPublishThumbDelegate(PublishDelegate):
             # other value (e.g. intermediary non-entity link node like sg_asset_type)
             header_text = field_value
 
-        widget.set_text(header_text, details_text, tooltip)
+        widget.set_text(header_text, details_text)
 
     def _format_publish(self, model_index, widget):
         # this is a publish!
@@ -128,7 +127,6 @@ class SgPublishThumbDelegate(PublishDelegate):
 
         header_text = ""
         details_text = ""
-        tooltip = ""
 
         # example data:
 

@@ -1,8 +1,8 @@
 import sgtk
-import datetime
+
 from sgtk.platform.qt import QtCore, QtGui
+
 from .model_latestpublish import SgLatestPublishModel
-from .utils import ResizeEventFilter
 
 # import the shotgun_model and view modules from the shotgun utils framework
 shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
@@ -18,7 +18,7 @@ class PublishWidget(QtGui.QWidget):
         """
         Constructor
 
-        :param widget_factory: 
+        :param widget_factory:
         :param parent: QT parent object
         """
         QtGui.QWidget.__init__(self, parent)
