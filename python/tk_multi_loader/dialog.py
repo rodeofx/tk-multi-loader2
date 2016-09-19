@@ -132,6 +132,7 @@ class AppDialog(QtGui.QWidget):
         self._history_view_selection_model = self.ui.history_view.selectionModel()
         self._history_view_selection_model.selectionChanged.connect(self._on_history_selection)
 
+        self._too_many_publishes_pixmap = QtGui.QPixmap(":/res/too_many_publishes_512x400.png")
         self._no_selection_pixmap = QtGui.QPixmap(":/res/no_item_selected_512x400.png")
         self._no_pubs_found_icon = QtGui.QPixmap(":/res/no_publishes_found.png")
 
@@ -553,18 +554,21 @@ class AppDialog(QtGui.QWidget):
             self.ui.detail_actions_btn.setVisible(is_publish)
             self.ui.detail_playback_btn.setVisible(is_publish)
 
+        def __clear_publish_history(pixmap):
+            self._publish_history_model.clear()
+            self.ui.details_header.setText("")
+            self.ui.details_image.setPixmap(pixmap)
+            __set_publish_ui_visibility(False)
+
         # note - before the UI has been shown, querying isVisible on the actual
         # widget doesn't work here so use member variable to track state instead
         if not self._details_pane_visible:
             return
 
-        if len(items) == 0 or len(items) > 1:
-            # FIXME: have a separate if for len > 2 with a message saying that the selection is too big.
-            # display a 'please select something' message in the thumb area
-            self._publish_history_model.clear()
-            self.ui.details_header.setText("")
-            self.ui.details_image.setPixmap(self._no_selection_pixmap)
-            __set_publish_ui_visibility(False)
+        if len(items) == 0:
+            __clear_publish_history(self._no_selection_pixmap)
+        elif len(items) > 1:
+            __clear_publish_history(self._too_many_publishes_pixmap)
         else:
 
             model_index = items[0]

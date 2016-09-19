@@ -209,8 +209,11 @@ class SgLatestPublishModel(ShotgunModel):
         tooltip = "<b>Name:</b> %s" % (sg_item.get("code") or "No name given.")
 
         # Version 012 by John Smith at 2014-02-23 10:34
-        created_unixtime = sg_item.get("created_at") or 0
-        date_str = datetime.datetime.fromtimestamp(created_unixtime).strftime('%Y-%m-%d %H:%M')
+        if not isinstance(sg_item.get("created_at"), datetime.datetime):
+            created_unixtime = sg_item.get("created_at") or 0
+            date_str = datetime.datetime.fromtimestamp(created_unixtime).strftime('%Y-%m-%d %H:%M')
+        else:
+            date_str = sg_item.get("created_at").strftime('%Y-%m-%d %H:%M')
 
         # created_by is set to None if the user has been deleted.
         if sg_item.get("created_by") and sg_item["created_by"].get("name"):
