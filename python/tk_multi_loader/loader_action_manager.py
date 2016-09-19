@@ -189,9 +189,9 @@ class LoaderActionManager(ActionManager):
             a = QtGui.QAction(caption, None)
             a.setToolTip(description)
 
-            # Create a generator that will return every (publish info, hook param) pairs for invoking
+            # Create a list that contains return every (publish info, hook param) pairs for invoking
             # the hook.
-            pairs = ((sg_data, action_def["params"]) for (sg_data, action_def) in action_list)
+            pairs = [(sg_data, action_def["params"]) for (sg_data, action_def) in action_list]
 
             # Bind all the pairs to a single invocation of the _execute_hook.
             a.triggered[()].connect(
@@ -257,24 +257,22 @@ class LoaderActionManager(ActionManager):
     
     ########################################################################################
     # callbacks
-    
+
     def _execute_hook(self, action_name, data_pairs):
         """
         callback - executes a hook
         """
         self._app.log_debug("Calling scene load hook.")
-        
+
         try:
-            for sg_data, params in data_pairs:
-                self._app.execute_hook_method("actions_hook",
-                                              "execute_action",
-                                              name=action_name,
-                                              params=params,
-                                              sg_publish_data=sg_data)
+            self._app.execute_hook_method("actions_hook",
+                                          "execute_action_on_selection",
+                                          name=action_name,
+                                          action_params=data_pairs)
         except Exception, e:
             self._app.log_exception("Could not execute execute_action hook.")
             QtGui.QMessageBox.critical(None, "Hook Error", "Error: %s" % e)
-    
+
     def _show_in_sg(self, entity):
         """
         Callback - Shows a shotgun entity in the web browser
