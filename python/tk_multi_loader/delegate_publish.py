@@ -11,15 +11,15 @@ shotgun_view = sgtk.platform.import_framework("tk-framework-qtwidgets", "views")
 
 class PublishWidget(QtGui.QWidget):
     """
-    Fixed height thin list item type widget, used for the list mode in the main loader view.
+    Base class for widget delegates in the main loader view. It takes care of
+    tracking the actions and adding them in the button's menu and the look and feel
+    when selected.
     """
 
     def __init__(self, widget_factory, parent):
         """
-        Constructor
-
-        :param widget_factory:
-        :param parent: QT parent object
+        :param widget_factory: Qt Designer-generated widget factory.
+        :param parent: Parent widget
         """
         QtGui.QWidget.__init__(self, parent)
 
@@ -48,18 +48,17 @@ class PublishWidget(QtGui.QWidget):
 
     def set_actions(self, actions):
         """
-        Adds a list of QActions to add to the actions menu for this widget.
+        Add a list of QActions to add to the actions menu for this widget.
 
         :param actions: List of QActions to add
         """
-        if len(actions) > 0:
-            self._actions = actions
-            for a in self._actions:
-                self._menu.addAction(a)
+        self._actions = actions
+        for a in self._actions:
+            self._menu.addAction(a)
 
     def set_button_visible(self, is_visible):
         """
-        Shows or hides the action button.
+        Show or hides the action button.
 
         :param is_visible: If True, button will be shown, hidden otherwise.
         """
@@ -67,7 +66,7 @@ class PublishWidget(QtGui.QWidget):
 
     def set_selected(self, selected):
         """
-        Adjust the style sheet to indicate selection or not
+        Adjust the style sheet to indicate selection or not.
 
         :param selected: True if selected, false if not
         """
@@ -84,6 +83,7 @@ class PublishWidget(QtGui.QWidget):
     def set_thumbnail(self, pixmap):
         """
         Set a thumbnail given the current pixmap.
+
         The pixmap must be 512x400 aspect ratio or it will appear squeezed
 
         :param pixmap: pixmap object to use
@@ -93,7 +93,10 @@ class PublishWidget(QtGui.QWidget):
 
 class PublishDelegate(shotgun_view.EditSelectedWidgetDelegate):
     """
-    Delegate which 'glues up' the Thumb widget with a QT View.
+    Base class for delegates which 'glues up' the widget with a QT View. It expects
+    the ``_format_folder`` and ``_format_publish`` method to be implemented so
+    it can be rendered correctly. The derived class only needs to worry about
+    how things get rendered.
     """
 
     def __init__(self, view, action_manager):
