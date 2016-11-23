@@ -28,6 +28,7 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         self._valid_type_ids = None
         self._show_folders = True
         self._search_filter = ""
+        self._valid_statuses = None
         
     def set_search_query(self, search_filter):
         """
@@ -48,6 +49,12 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         # tell model to repush data
         self.invalidateFilter()
         self.filter_changed.emit()
+
+    def set_filter_by_status(self, statuses):
+        self._valid_statuses = statuses.split(' (')[0]
+        self.invalidateFilter()
+        self.filter_changed.emit()
+
         
     def filterAcceptsRow(self, source_row, source_parent_idx):
         """
@@ -56,7 +63,26 @@ class SgLatestPublishProxyModel(QtGui.QSortFilterProxyModel):
         This will check each row as it is passing through the proxy
         model and see if we should let it pass or not.    
         """
+        # get the search filter, as specified via setFilterFixedString()
+        search_exp = self.filterRegExp()
+        search_exp.setCaseSensitivity(QtCore.Qt.CaseInsensitive)
+
+        model = self.sourceModel()
         
+        current_item = model.invisibleRootItem().child(source_row)  # assume non-tree structure
+        sg_data = current_item.get_sg_data()
+        publish_name = ''
+        if sg_data:
+            publish_name = sg_data.get('name')
+            publish_status = sg_data.get('sg_status_list')
+        
+        is_folder = current_item.data(SgLatestPublishModel.IS_FOLDER_ROLE)
+
+        # See if status matches
+        if self._valid_statuses not in (None, 'All'):
+            if publish_status != self._valid_statuses:
+                return False
+
         if self._valid_type_ids is None:
             # accept all!
             return True

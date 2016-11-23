@@ -45,22 +45,38 @@ class SgEntityModel(ShotgunModel):
         self._entity_icons["Ticket"] = QtGui.QIcon(QtGui.QPixmap(":/res/icon_Ticket_dark.png"))
         self._entity_icons["Version"] = QtGui.QIcon(QtGui.QPixmap(":/res/icon_Version_dark.png"))
         
-        ShotgunModel.__init__(self,
+        ShotgunModel.__init__(self, 
                               parent,
-                             download_thumbs=False, 
-                             schema_generation=4,
-                             bg_load_thumbs=True,
-                             bg_task_manager=bg_task_manager)
+                              download_thumbs=False, 
+                              schema_generation=4,
+                              bg_load_thumbs=True,
+                              bg_task_manager=bg_task_manager)
         fields=["image", "sg_status_list", "description"]
         self._load_data(entity_type, filters, hierarchy, fields)
-        
-        
-        
-        
+
+        # this dict holds entity which was selected in dialog after model was filled. This selection
+        # is result of self._on_home_clicked() executed at last line of _load_entity_presets()
+        # reSelector will be used only once in data_refreshed_cb to restore selection if items in model
+        # were destroyed and created again as result of differences between local shotgun disc cache
+        # and actual shotgun data
+        # see __on_sg_data_arrived(...) in class ShotgunModel
+        self.reSelector = {'entity': None,
+                           'found_preset': None,
+                           'dialog': parent,
+                           'sel_func': None
+                           }
+        self.data_refreshed.connect(self.data_refreshed_cb)
     
     ############################################################################################
     # public methods
-    
+
+    def data_refreshed_cb(self):
+        entity = self.reSelector.get('entity', None)
+        if entity:
+            item = self.item_from_entity(entity.get('type'), entity.get('id'))
+            self.reSelector.get('sel_func')(self.reSelector.get('found_preset'), item)
+            self.reSelector['entity'] = None
+
     def async_refresh(self):
         """
         Trigger an asynchronous refresh of the model

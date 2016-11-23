@@ -34,6 +34,9 @@ overlay_widget = sgtk.platform.import_framework("tk-framework-qtwidgets", "overl
 task_manager = sgtk.platform.import_framework("tk-framework-shotgunutils", "task_manager")
 shotgun_globals = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_globals")
 
+app = sgtk.platform.current_bundle()
+rdo_fw_path =  app.frameworks.get("tk-framework-rdo").disk_location
+
 ShotgunModelOverlayWidget = overlay_widget.ShotgunModelOverlayWidget
 
 class AppDialog(QtGui.QWidget):
@@ -176,7 +179,8 @@ class AppDialog(QtGui.QWidget):
         self._publish_model.cache_loaded.connect(self._on_publish_content_change)
         self._publish_model.data_refreshed.connect(self._on_publish_content_change)
         self._publish_proxy_model.filter_changed.connect(self._on_publish_content_change)
-
+        self._publish_model.data_refreshed.connect(self._on_status_filter_change)
+        self._publish_proxy_model.filter_changed.connect(self._on_status_filter_change)
 
         # hook up view -> proxy model -> model
         self.ui.publish_view.setModel(self._publish_proxy_model)
@@ -187,7 +191,11 @@ class AppDialog(QtGui.QWidget):
         self._publish_list_delegate = SgPublishListDelegate(self.ui.publish_view, self._action_manager)
         
         # recall which the most recently mode used was and set that
-        main_view_mode = self._settings_manager.retrieve("main_view_mode", self.MAIN_VIEW_THUMB)
+        default_view_mode = self.MAIN_VIEW_THUMB
+        # Check value of display_thumbnail in app settings
+        if not sgtk.platform.current_bundle().get_setting("display_thumbnail"):
+            default_view_mode = self.MAIN_VIEW_LIST
+        main_view_mode = self._settings_manager.retrieve("main_view_mode", default_view_mode)
         self._set_main_view_mode(main_view_mode)
 
         # whenever the type list is checked, update the publish filters
@@ -210,28 +218,16 @@ class AppDialog(QtGui.QWidget):
         self.ui.publish_view.setContextMenuPolicy(QtCore.Qt.ActionsContextMenu)
 
         #################################################
-        # popdown publish filter widget for the main view
-        # note:
-        # we parent the widget to a frame that flows around the 
-        # main publish area - this is in order to avoid a scenario
-        # where the overlay that sometimes pops up on top of the 
-        # publish area and the search widget would be competing
-        # for the same z-index. The result in some of these cases 
-        # is that the search widget is hidden under the "publishes
-        # not found" overlay. By having it parented to the frame 
-        # instead, it will always be above the overlay.
-        self._search_widget = SearchWidget(self.ui.publish_frame)
-        # hook it up with the search button the main toolbar
-        self.ui.search_publishes.clicked.connect(self._on_publish_filter_clicked)
-        # hook it up so that it signals the publish proxy model whenever the filter changes
-        self._search_widget.filter_changed.connect(self._publish_proxy_model.set_search_query)
-
-        #################################################
         # checkboxes, buttons etc
         self.ui.show_sub_items.toggled.connect(self._on_show_subitems_toggled)
 
         self.ui.check_all.clicked.connect(self._publish_type_model.select_all)
         self.ui.check_none.clicked.connect(self._publish_type_model.select_none)
+        
+        #################################################
+        # filter status
+        self._filter_status = QtGui.QComboBox()
+        self._sg_type_ids = None
 
         #################################################
         # thumb scaling
@@ -278,6 +274,18 @@ class AppDialog(QtGui.QWidget):
         # load visibility state for details pane
         show_details = self._settings_manager.retrieve("show_details", False)
         self._set_details_pane_visiblity(show_details)
+
+        # Add rdo custom UI
+        hlayout = QtGui.QHBoxLayout()
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.ui.middle_area.insertLayout(1, hlayout,)
+        self._add_rdo_status_filter(hlayout)
+        hlayout.addItem(spacerItem)
+
+        # Publishes search widget
+        self._search_widget = SearchWidget(self.ui.publish_view, self.ui.publish_frame)
+        hlayout.addWidget(self._search_widget)
+        self._search_widget.filter_changed.connect(self._publish_proxy_model.set_search_query)
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
@@ -421,17 +429,6 @@ class AppDialog(QtGui.QWidget):
         if default_action:
             default_action.trigger()
 
-    def _on_publish_filter_clicked(self):
-        """
-        Executed when someone clicks the filter button in the main UI
-        """        
-        if self.ui.search_publishes.isChecked():
-            self.ui.search_publishes.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/search_active.png")))
-            self._search_widget.enable()
-        else:
-            self.ui.search_publishes.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/search.png")))
-            self._search_widget.disable()
-
     def _on_thumbnail_mode_clicked(self):
         """
         Executed when someone clicks the thumbnail mode button
@@ -456,7 +453,9 @@ class AppDialog(QtGui.QWidget):
             self.ui.thumbnail_mode.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/mode_switch_thumb.png")))
             self.ui.thumbnail_mode.setChecked(False)
             self.ui.publish_view.setViewMode(QtGui.QListView.ListMode)
-            self.ui.publish_view.setItemDelegate(self._publish_list_delegate)            
+            self.ui.publish_view.setItemDelegate(self._publish_list_delegate)
+            self.ui.thumb_scale.setVisible(False)
+            self.ui.label_2.setVisible(False)
             
         elif mode == self.MAIN_VIEW_THUMB:
             self.ui.list_mode.setIcon(QtGui.QIcon(QtGui.QPixmap(":/res/mode_switch_card.png")))
@@ -465,6 +464,8 @@ class AppDialog(QtGui.QWidget):
             self.ui.thumbnail_mode.setChecked(True)
             self.ui.publish_view.setViewMode(QtGui.QListView.IconMode)
             self.ui.publish_view.setItemDelegate(self._publish_thumb_delegate)
+            self.ui.thumb_scale.setVisible(True)
+            self.ui.label_2.setVisible(True)
             
         else:
             raise TankError("Undefined view mode!") 
@@ -748,6 +749,7 @@ class AppDialog(QtGui.QWidget):
         # first, try to find the "home" item by looking at the current app context.
         found_preset = None
         found_item = None
+        found_model = None
 
         # get entity portion of context
         ctx = sgtk.platform.current_bundle().context
@@ -761,17 +763,26 @@ class AppDialog(QtGui.QWidget):
 
                     # now see if our context object also exists in the tree of this profile
                     model = self._entity_presets[p].model
+
                     item = model.item_from_entity(ctx.entity["type"], ctx.entity["id"])
 
                     if item is not None:
                         # find an absolute match! Break the search.
                         found_item = item
+                        found_model = model
                         break
 
         if found_preset is None:
             # no suitable item found. Use the first tab
             found_preset = self.ui.entity_preset_tabs.tabText(0)
 
+        if found_model and found_item:
+            # store current selection data in case model is refreshed. If this happens selection will be lost
+            # and user will have to press home again. This data will be used in SgEntityModel to restore
+            # selection after new data is fed into model.
+            found_model.reSelector['entity'] = found_item.get_sg_data()
+            found_model.reSelector['found_preset'] = found_preset
+            found_model.reSelector['sel_func'] = self._select_item_in_entity_tree
         # select it in the left hand side tree view
         self._select_item_in_entity_tree(found_preset, found_item)
 
@@ -805,9 +816,17 @@ class AppDialog(QtGui.QWidget):
         # go through and figure out which checkboxes are clicked and then
         # update the publish proxy model so that only items of that type
         # is displayed
-        sg_type_ids = self._publish_type_model.get_selected_types()
+        self._sg_type_ids = self._publish_type_model.get_selected_types()
         show_folders = self._publish_type_model.get_show_folders()
-        self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
+        self._publish_proxy_model.set_filter_by_type_ids(self._sg_type_ids, show_folders)
+
+
+    def apply_status_filters_on_publishes(self):
+        """
+        Executed when the type listing changes
+        """
+        chosen_status = self._filter_status.currentText()
+        self._publish_proxy_model.set_filter_by_status(chosen_status)
 
     ########################################################################################
     # publish view
@@ -1131,37 +1150,6 @@ class AppDialog(QtGui.QWidget):
             hlayout = QtGui.QHBoxLayout()
             layout.addLayout(hlayout)
 
-            # add search textfield
-            search = QtGui.QLineEdit(tab)
-            search.setStyleSheet("QLineEdit{ border-width: 1px; "
-                                        "background-image: url(:/res/search.png);"
-                                        "background-repeat: no-repeat;"
-                                        "background-position: center left;"
-                                        "border-radius: 5px; "
-                                        "padding-left:20px;"
-                                        "margin:4px;"
-                                        "height:22px;"
-                                        "}")
-            search.setToolTip("Use the <i>search</i> field to narrow down the items displayed in the tree above.")
-
-            try:
-                # this was introduced in qt 4.7, so try to use it if we can... :)
-                search.setPlaceholderText("Search...")
-            except:
-                pass
-
-            hlayout.addWidget(search)
-
-            # and add a cancel search button, disabled by default
-            clear_search = QtGui.QToolButton(tab)
-            icon = QtGui.QIcon()
-            icon.addPixmap(QtGui.QPixmap(":/res/clear_search.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-            clear_search.setIcon(icon)
-            clear_search.setAutoRaise(True)
-            clear_search.clicked.connect( lambda editor=search: editor.setText("") )
-            clear_search.setToolTip("Click to clear your current search.")
-            hlayout.addWidget(clear_search)
-
             # set up data backend
             model = SgEntityModel(self, 
                                   sg_entity_type, 
@@ -1189,8 +1177,6 @@ class AppDialog(QtGui.QWidget):
             self._dynamic_widgets.extend( [tab,
                                            layout,
                                            hlayout,
-                                           search,
-                                           clear_search,
                                            view,
                                            overlay,
                                            action_ea,
@@ -1200,9 +1186,14 @@ class AppDialog(QtGui.QWidget):
             # set up proxy model that we connect our search to
             proxy_model = SgEntityProxyModel(self)
             proxy_model.setSourceModel(model)
-            search.textChanged.connect(lambda text, v=view, pm=proxy_model: self._on_search_text_changed(text, v, pm) )
 
-            self._dynamic_widgets.extend([model, proxy_model])
+            # add search textfield
+            search = SearchWidget(view, tab)
+            hlayout.addWidget(search)
+#             search.textChanged.connect(lambda text, v=view, pm=proxy_model: self._on_search_text_changed(text, v, pm) )
+            search.filter_changed.connect(proxy_model.setFilterFixedString)
+
+            self._dynamic_widgets.extend([search, model, proxy_model])
 
             # configure the view
             view.setEditTriggers(QtGui.QAbstractItemView.NoEditTriggers)
@@ -1237,32 +1228,17 @@ class AppDialog(QtGui.QWidget):
         # data has properly arrived in the model.
         self._on_home_clicked()
 
-    def _on_search_text_changed(self, pattern, tree_view, proxy_model):
-        """
-        Triggered when the text in a search editor changes.
-
-        :param pattern: new contents of search box
-        :param tree_view: associated tree view.
-        :param proxy_model: associated proxy model
-        """
-
-        # tell proxy model to reevaulate itself given the new pattern.
-        proxy_model.setFilterFixedString(pattern)
-
-        # change UI decorations based on new pattern.
-        if pattern and len(pattern) > 0:
-            # indicate with a blue border that a search is active
-            tree_view.setStyleSheet("""QTreeView { border-width: 3px;
-                                                   border-style: solid;
-                                                   border-color: #2C93E2; }
-                                       QTreeView::item { padding: 6px; }
-                                    """)
-            # expand all nodes in the tree
-            tree_view.expandAll()
-        else:
-            # revert to default style sheet
-            tree_view.setStyleSheet("QTreeView::item { padding: 6px; }")
-
+    def _add_rdo_status_filter(self, hlayout):
+        '''
+        Add a combo box to sort the latest publishes by status
+        Kind of copying off the _add_rdo_status_filter
+        '''
+        filter_label = QtGui.QLabel("Filter by Status")
+        filter_label.setAlignment(QtCore.Qt.AlignLeft|QtCore.Qt.AlignTrailing|QtCore.Qt.AlignVCenter)
+        self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+        hlayout.addWidget(filter_label)
+        hlayout.addWidget(self._filter_status)
+        self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
 
     def _on_entity_profile_tab_clicked(self):
         """
@@ -1497,6 +1473,30 @@ class AppDialog(QtGui.QWidget):
 
         self.ui.entity_breadcrumbs.setText("<big>%s</big>" % breadcrumbs)
 
+    def _on_status_filter_change(self):
+        """
+        Reload the status filter combo box 
+        With correct count in brackets
+        """
+        tmp_index = self._filter_status.currentIndex()
+        tmp_index = 0 if tmp_index< 0 else tmp_index
+
+        publish_items = self._publish_model._publish_items
+        self._filter_status.clear()
+
+        valid_ids = self._publish_proxy_model._valid_type_ids
+        valid_items = [item for item in publish_items if item['type_id'] in valid_ids]
+        
+
+        self._filter_status.addItem("All (%d)" % len(valid_items))
+        status_list = list(set(item['sg_item']['sg_status_list'] for item in valid_items))
+        for status in status_list:
+            icon = QtGui.QIcon()
+            count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
+            name = "%s (%d)   " % (status, count)
+            icon.addPixmap(QtGui.QPixmap("%s/resources/%s.png" % (rdo_fw_path, status)), QtGui.QIcon.Normal, QtGui.QIcon.Off)
+            self._filter_status.addItem(icon, name)
+        self._filter_status.setCurrentIndex(tmp_index)
 
 ################################################################################################
 # Helper stuff
