@@ -70,7 +70,7 @@ class SearchWidget(QtGui.QWidget):
         icon.addPixmap(QtGui.QPixmap(":/res/clear_search.png"), QtGui.QIcon.Normal, QtGui.QIcon.Off)
         clear_search.setIcon(icon)
         clear_search.setAutoRaise(True)
-        clear_search.clicked.connect(lambda editor=self.search: editor.setText(""))
+        clear_search.clicked.connect(lambda _: self.search.setText(""))
         clear_search.setToolTip("Click to clear your current search.")
 
         hlayout.addWidget(self.search)

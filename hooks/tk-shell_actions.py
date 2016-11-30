@@ -1,4 +1,4 @@
-# Copyright (c) 2013 Shotgun Software Inc.
+# Copyright (c) 2016 Shotgun Software Inc.
 #
 # CONFIDENTIAL AND PROPRIETARY
 #
@@ -11,19 +11,20 @@
 """
 Hook that loads defines all the available actions, broken down by publish type.
 """
+import pprint
 import sgtk
 
 HookBaseClass = sgtk.get_hook_baseclass()
 
 
-class SoftimageActions(HookBaseClass):
-
-    ##########################################################################################################
-    # public interface - to be overridden by deriving classes
+class ShellActions(HookBaseClass):
+    """
+    Stub implementation of the shell actions, used for testing.
+    """
 
     def generate_actions(self, sg_publish_data, actions, ui_area):
         """
-        Returns a list of action instances for a particular publish.
+        Return a list of action instances for a particular publish.
         This method is called each time a user clicks a publish somewhere in the UI.
         The data returned from this hook will be used to populate the actions menu for a publish.
 
@@ -63,25 +64,47 @@ class SoftimageActions(HookBaseClass):
                       "Actions: %s. Publish Data: %s" % (ui_area, actions, sg_publish_data))
 
         action_instances = []
+
+        # For the sake of easy test, we'll reuse Maya publish types.
+
+        if "debug_action_1" in actions:
+            action_instances.append({"name": "debug_action_1",
+                                     "params": "Debug Action 1 'params'",
+                                     "caption": "Debug Action 1",
+                                     "description": "Executes Debug Action 1."})
+
+        if "debug_action_2" in actions:
+            action_instances.append({"name": "debug_action_2",
+                                     "params": "Debug Action 2 'params'",
+                                     "caption": "Debug Action 2",
+                                     "description": "Executes Debug Action 2."})
+
+        if "debug_action_3" in actions:
+            action_instances.append({"name": "debug_action_3",
+                                     "params": "Debug Action 3 'params'",
+                                     "caption": "Debug Action 3",
+                                     "description": "Executes Debug Action 3."})
+
+        if "debug_action_4" in actions:
+            action_instances.append({"name": "debug_action_4",
+                                     "params": "Debug Action 4 'params'",
+                                     "caption": "Debug Action 4",
+                                     "description": "Executes Debug Action 4."})
         return action_instances
 
-    def execute_action_on_selection(self, name, action_params):
+    def execute_multiple_actions(self, actions):
         """
         Executes the specified action on a list of items.
 
-        The default implementation dispatches each item from ``action_params`` to
+        The default implementation dispatches each item from ``actions`` to
         the ``execute_action`` method.
 
-        The ``action_params`` will take the following layout:
+        The ``actions`` is a list of dictionaries holding all the actions to execute.
+        Each entry will have the following values:
 
-        .. code-block::
-            [
-                (
-                    {"type": "PublishedFile", "id": 3, ...},
-                    # Value returned in the "params" field of "generate_actions" return value>
-                ),
-                # Tuples for the other items in the selection.
-            ]
+            name: Name of the action to execute
+            sg_publish_data: Publish information coming from Shotgun
+            params: Parameters passed down from the generate_actions hook.
 
         .. note::
             This is the default entry point for the hook. It reuses the ``execute_action``
@@ -92,15 +115,21 @@ class SoftimageActions(HookBaseClass):
             The hook will stop applying the actions on the selection if an error
             is raised midway through.
 
-        :param str name: Name of the action that is about to be executed.
-        :param list action_params: Tuples of publish data and the action's parameters.
+        :param list actions: Action dictionaries.
         """
-        for sg_publish_data, params in action_params:
+        app = self.parent
+        app.log_info("Executing action '%s' on the selection")
+        # Helps to visually scope selections
+        # Execute each action.
+        for single_action in actions:
+            name = single_action["name"]
+            sg_publish_data = single_action["sg_publish_data"]
+            params = single_action["params"]
             self.execute_action(name, params, sg_publish_data)
 
     def execute_action(self, name, params, sg_publish_data):
         """
-        Execute a given action. The data sent to this be method will
+        Print out all actions. The data sent to this be method will
         represent one of the actions enumerated by the generate_actions method.
 
         :param name: Action name string representing one of the items returned by generate_actions.
@@ -109,5 +138,11 @@ class SoftimageActions(HookBaseClass):
         :returns: No return value expected.
         """
         app = self.parent
-        app.log_debug("Execute action called for action %s. "
-                      "Parameters: %s. Publish Data: %s" % (name, params, sg_publish_data))
+        app.log_info("Action Name: %s" % name)
+        app.log_info("Parameters:")
+        for l in pprint.pformat(params, indent=4).split("\n"):
+            app.log_info(l)
+        app.log_info("Publish data:")
+        for l in pprint.pformat(sg_publish_data, indent=4).split("\n"):
+            app.log_info(l)
+        app.log_info("=" * 20)
