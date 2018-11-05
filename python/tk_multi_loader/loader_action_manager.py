@@ -145,8 +145,11 @@ class LoaderActionManager(ActionManager):
         # Dictionary of all actions that are common to all publishes in the selection.
         # The key is the action name, the value is the a list of data pairs. Each data pair
         # holds the Shotgun Item the action is for and the action description.
-        intersection_actions_per_name = dict(
-            [(action["name"], [(sg_data_list[0], action)]) for action in first_entity_actions]
+        #
+        # Rodeo note: We can have multiple actions for the same TankPublishedFile
+        # but with different params. However we don't expect to have multiple actions with the same caption.
+        intersection_actions_per_caption = dict(
+            [(action["caption"], [(sg_data_list[0], action)]) for action in first_entity_actions]
         )
 
         # ... and then we'll remove actions from that set as we encounter entities without those actions.
@@ -162,23 +165,23 @@ class LoaderActionManager(ActionManager):
             # Turn the list of actions into a dictionary of actions using the key
             # as the name.
             publish_actions = dict(
-                [(action["name"], action) for action in publish_actions]
+                [(action["caption"], action) for action in publish_actions]
             )
 
             # Check if the actions from the intersection are available for this publish
             #
             # Get a copy of the keys because we're about to remove items as they are visited.
-            for name in intersection_actions_per_name.keys():
+            for caption in intersection_actions_per_caption.keys():
                 # If the action is available for that publish, add the publish's action to the intersection
-                publish_action = publish_actions.get(name)
+                publish_action = publish_actions.get(caption)
                 if publish_action:
-                    intersection_actions_per_name[name].append((sg_data, publish_action))
+                    intersection_actions_per_caption[caption].append((sg_data, publish_action))
                 else:
                     # Otherwise remove this action from the intersection
-                    del intersection_actions_per_name[name]
+                    del intersection_actions_per_caption[caption]
 
             # Early out, happens if the intersection has been made empty.
-            if not intersection_actions_per_name:
+            if not intersection_actions_per_caption:
                 break
 
         # We need to order the resulting intersection like the actions were returned
@@ -190,9 +193,9 @@ class LoaderActionManager(ActionManager):
         for action in first_entity_actions:
             # If that action is still present in the intersection, add it to the final
             # list of actions
-            if action["name"] in intersection_actions_per_name:
+            if action["caption"] in intersection_actions_per_caption:
                 intersection_actions.append(
-                    intersection_actions_per_name[action["name"]]
+                    intersection_actions_per_caption[action["caption"]]
                 )
 
         # For every actions in the intersection, create an associated QAction with appropriate callback
