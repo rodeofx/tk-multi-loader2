@@ -114,42 +114,6 @@ class NukeActions(HookBaseClass):
 
         return action_instances
 
-<<<<<<< HEAD
-    def execute_action_on_selection(self, name, action_params):
-        """
-        Executes the specified action on a list of items.
-
-        The default implementation dispatches each item from ``action_params`` to
-        the ``execute_action`` method.
-
-        The ``action_params`` will take the following layout:
-
-        .. code-block::
-            [
-                (
-                    {"type": "PublishedFile", "id": 3, ...},
-                    # Value returned in the "params" field of "generate_actions" return value>
-                ),
-                # Tuples for the other items in the selection.
-            ]
-
-        .. note::
-            This is the default entry point for the hook. It reuses the ``execute_action``
-            method for backward compatibility with hooks written for the previous
-            version of the loader.
-
-        .. note::
-            The hook will stop applying the actions on the selection if an error
-            is raised midway through.
-
-        :param str name: Name of the action that is about to be executed.
-        :param list action_params: Tuples of publish data and the action's parameters.
-        """
-        for sg_publish_data, params in action_params:
-            self.execute_action(name, params, sg_publish_data)
-
-=======
->>>>>>> upstream/master
     def execute_multiple_actions(self, actions):
         """
         Executes the specified action on a list of items.
@@ -295,22 +259,6 @@ class NukeActions(HookBaseClass):
 
         (_, ext) = os.path.splitext(path)
 
-<<<<<<< HEAD
-        valid_extensions = [".png", 
-                            ".jpg", 
-                            ".jpeg", 
-                            ".exr", 
-                            ".cin", 
-                            ".dpx", 
-                            ".tiff", 
-                            ".tif", 
-                            ".mov", 
-                            ".psd",
-                            ".tga",
-                            ".ari",
-                            ".gif",
-                            ".iff"]
-=======
         # If this is an Alembic cache, use a ReadGeo2 and we're done.
         if ext.lower() == ".abc":
             nuke.createNode("ReadGeo2", "file {%s}" % path)
@@ -333,7 +281,6 @@ class NukeActions(HookBaseClass):
             ".gif",
             ".iff",
         ]
->>>>>>> upstream/master
 
         if ext.lower() not in valid_extensions:
             raise Exception("Unsupported file extension for '%s'!" % path)

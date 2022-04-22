@@ -8,6 +8,7 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
+import sgtk
 from sgtk.platform.qt import QtCore, QtGui
 
 
@@ -327,4 +328,3 @@ def resolve_filters(filters):
                 resolved_filter.append(field)
         resolved_filters.append(resolved_filter)
     return resolved_filters
->>>>>>> upstream/master

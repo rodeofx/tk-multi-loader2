@@ -218,13 +218,7 @@ class AppDialog(QtGui.QWidget):
         self._publish_model.cache_loaded.connect(self._on_publish_content_change)
         self._publish_model.data_refreshed.connect(self._on_publish_content_change)
         self._publish_proxy_model.filter_changed.connect(
-            self._on_publish_content_change,
-        )
-        self._publish_model.data_refreshed.connect(
-            self._on_status_filter_change,
-        )
-        self._publish_proxy_model.filter_changed.connect(
-            self._on_status_filter_change,
+            self._on_publish_content_change
         )
 
         # hook up view -> proxy model -> model
@@ -323,7 +317,6 @@ class AppDialog(QtGui.QWidget):
         self.ui.navigation_home.clicked.connect(self._on_home_clicked)
         self.ui.navigation_prev.clicked.connect(self._on_back_clicked)
         self.ui.navigation_next.clicked.connect(self._on_forward_clicked)
-        self._first_home_click = {}
 
         #################################################
         # set up cog button actions
@@ -358,9 +351,10 @@ class AppDialog(QtGui.QWidget):
         hlayout.addItem(spacerItem)
 
         # Publishes search widget
-        self._search_widget = SearchWidget(self.ui.publish_view, self.ui.publish_frame)
         hlayout.addWidget(self._search_widget)
-        self._search_widget.filter_changed.connect(lambda filter: self._publish_proxy_model.set_search_query(str(filter)))
+        self._search_widget.filter_changed.connect(
+            lambda filter: self._publish_proxy_model.set_search_query(str(filter)),
+        )
 
         # trigger an initial evaluation of filter proxy model
         self._apply_type_filters_on_publishes()
@@ -912,7 +906,6 @@ class AppDialog(QtGui.QWidget):
         found_preset = None
         found_hierarchy_preset = None
         found_item = None
-        found_model = None
 
         # get entity portion of context
         ctx = sgtk.platform.current_bundle().context
@@ -959,15 +952,6 @@ class AppDialog(QtGui.QWidget):
             # select it in the left hand side tree view
             self._select_item_in_entity_tree(found_preset, found_item)
 
-    def functionCB(self):
-        """
-        Callback used only once at app startup, to ensure that we are displaying
-        the items in the publish model once they are loaded.
-        """
-        self._first_home_click['model'].data_refreshed.disconnect(self.functionCB)
-        self._first_home_click = {}
-        self._on_home_clicked()
-
     def _on_back_clicked(self):
         """
         User clicks the back button
@@ -998,10 +982,9 @@ class AppDialog(QtGui.QWidget):
         # go through and figure out which checkboxes are clicked and then
         # update the publish proxy model so that only items of that type
         # is displayed
-        self._sg_type_ids = self._publish_type_model.get_selected_types()
+        sg_type_ids = self._publish_type_model.get_selected_types()
         show_folders = self._publish_type_model.get_show_folders()
-        self._publish_proxy_model.set_filter_by_type_ids(self._sg_type_ids, show_folders)
-
+        self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
 
     def apply_status_filters_on_publishes(self):
         """
@@ -1009,7 +992,6 @@ class AppDialog(QtGui.QWidget):
         """
         chosen_status = self._filter_status.currentText()
         self._publish_proxy_model.set_filter_by_status(chosen_status)
-
     ########################################################################################
     # publish view
 
@@ -1747,6 +1729,22 @@ class AppDialog(QtGui.QWidget):
             # revert to default style sheet
             tree_view.setStyleSheet("QTreeView::item { padding: 6px; }")
 
+    def _add_rdo_status_filter(self, hlayout):
+        """
+        Add a combo box to sort the latest publishes by status
+        Kind of copying off the _add_rdo_status_filter
+        """
+        filter_label = QtGui.QLabel("Filter by Status")
+        filter_label.setAlignment(
+            QtCore.Qt.AlignLeft
+            |QtCore.Qt.AlignTrailing
+            |QtCore.Qt.AlignVCenter
+        )
+        self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+        hlayout.addWidget(filter_label)
+        hlayout.addWidget(self._filter_status)
+        self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
+
     def _on_entity_profile_tab_clicked(self):
         """
         Called when someone clicks one of the profile tabs
@@ -1997,30 +1995,6 @@ class AppDialog(QtGui.QWidget):
 
         self.ui.entity_breadcrumbs.setText("<big>%s</big>" % breadcrumbs)
 
-    def _on_status_filter_change(self):
-        """
-        Reload the status filter combo box
-        With correct count in brackets
-        """
-        tmp_index = self._filter_status.currentIndex()
-        tmp_index = 0 if tmp_index< 0 else tmp_index
-
-        publish_items = self._publish_model._publish_items
-        self._filter_status.clear()
-
-        valid_ids = self._publish_proxy_model._valid_type_ids
-        valid_items = [item for item in publish_items if item['type_id'] in valid_ids]
-
-
-        self._filter_status.addItem("All (%d)" % len(valid_items))
-        status_list = list(set(item['sg_item']['sg_status_list'] for item in valid_items))
-        for status in status_list:
-            icon = QtGui.QIcon()
-            count = sum(item['sg_item']['sg_status_list'] == status for item in valid_items)
-            name = "%s (%d)   " % (status, count)
-            icon.addPixmap(QtGui.QPixmap("%s/resources/%s.png" % (rdo_fw_path, status)), QtGui.QIcon.Normal, QtGui.QIcon.Off)
-            self._filter_status.addItem(icon, name)
-        self._filter_status.setCurrentIndex(tmp_index)
 
 ################################################################################################
 # Helper stuff
@@ -2039,4 +2013,3 @@ class EntityPreset(object):
         self.view = view
         self.entity_type = entity_type
         self.publish_filters = publish_filters
-        self.ignore_tab = ignore_tab
