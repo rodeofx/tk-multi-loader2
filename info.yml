@@ -17,7 +17,7 @@ configuration:
     menu_name:
         type: str
         default_value: "Load"
-        description: Name to appear on the Shotgun menu.
+        description: Name to appear on the ShotGrid menu.
 
     title_name:
         type: str
@@ -39,12 +39,12 @@ configuration:
         type: hook
         default_value: "{self}/filter_publishes.py"
         description: Specify a hook that, if needed, can filter the raw list of publishes returned
-                     from Shotgun for the current location.
+                     from ShotGrid for the current location.
 
     download_thumbnails:
         type: bool
         default_value: true
-        description: Controls whether thumbnails should be downloaded from Shotgun or not. We
+        description: Controls whether thumbnails should be downloaded from ShotGrid or not. We
                      strongly recommend that thumbnails are downloaded since this greatly enhances
                      the user experience of the loader, however in some situations this may be
                      difficult due to bandwidth or infrastructural restrictions.
@@ -52,8 +52,7 @@ configuration:
     action_mappings:
         type: dict
         description: Associates published file types with actions. The actions are all defined
-                     inside the actions hook, so a number of actions are available by default
-                     and in addition to this you can add your own actions if you like.
+                     inside the actions hook.
         default_value: {}
         default_value_tk-3dsmax:
             3dsmax Scene: [import, reference]
@@ -76,49 +75,60 @@ configuration:
             Rendered Image: [add_as_a_layer, open_file]
         default_value_tk-mari:
             Alembic Cache: [geometry_import]
+        default_value_tk-flame:
+            Flame Batch File: [load_setup]
+            Flame Quicktime: [load_clip]
+            Flame Render: [load_clip]
+            Photoshop Image: [load_clip]
+            Rendered Image: [load_clip]
+            Image: [load_clip]
+            Movie: [load_clip]
+            Texture: [load_clip]
 
+    entity_mappings:
+        type: dict
+        description: Associates entity types with actions. The actions are all defined
+                     inside the actions hook.
+        default_value: {}
+        default_value_tk-flame:
+            Shot: [load_batch, create_batch]
 
     entities:
         default_value:
-            - caption: Assets
-              entity_type: Asset
+            - caption: Project
+              type: Hierarchy
+              root: "{context.project}"
               publish_filters: []
-              filters:
-              - ["project", "is", "{context.project}"]
-              hierarchy: [sg_asset_type, code]
-
-            - caption: Shots
-              entity_type: Shot
-              publish_filters: []
-              filters:
-              - ["project", "is", "{context.project}"]
-              hierarchy: [sg_sequence, code]
 
             - caption: My Tasks
+              type: Query
               entity_type: Task
               publish_filters: []
               filters:
-              - [task_assignees, is, '{context.user}']
+              - [task_assignees, is, "{context.user}"]
               - ["project", "is", "{context.project}"]
               hierarchy: [entity, content]
 
-
         type: list
         description: "This setting defines the different tabs that will show up on the left hand side.
-                      Each tab represents a Shotgun query, grouped by some shotgun fields to form a tree. 
-                      This setting is a list of dictionaries. Each dictionary in the list defines one tab,
-                      and should have they following keys: *caption* specifies the name of the tab, *entity_type*
-                      specifies the shotgun entity type to display. *filters* is a list of standard API Shotgun 
-                      filters. *hierarchy* is a list of shotgun fields, defining the grouping of the tree.
-                      Optionally, you can specify a *publish_filters* key, containing shotgun API filters to
-                      apply to the publishes listing as it is being loaded in the main view." 
+                      Each tab represents a ShotGrid query, grouped by some ShotGrid fields to form a tree.
+                      This setting is a list of dictionaries. Each dictionary in the list defines one tab.
+                      Dictionaries with their *type* key set to 'Hierarchy' should have they following keys:
+                      *caption* specifies the name of the tab, *root* specifies the path to the root
+                      of the project hierarchy to display.
+                      Dictionaries with their *type* key set to 'Query' should have they following keys:
+                      *caption* specifies the name of the tab, *entity_type* specifies the ShotGrid entity
+                      type to display. *filters* is a list of standard API ShotGrid filters.
+                      *hierarchy* is a list of ShotGrid fields, defining the grouping of the tree.
+                      Optionally, you can specify a *publish_filters* key, containing ShotGrid API filters to
+                      apply to the publishes listing as it is being loaded in the main view."
         allows_empty: False
         values:
             type: dict
 
     publish_filters:
         type: list
-        description: "List of additional shotgun filters to apply to the publish listings.  These
+        description: "List of additional ShotGrid filters to apply to the publish listings.  These
                       will be applied before any other filtering takes place and would allow you to
                       for example hide things with a certain status."
         values:
@@ -140,11 +150,11 @@ description: "Locate published files and reference them into your scene."
 
 # Required minimum versions for this item to run
 requires_shotgun_version:
-requires_core_version: "v0.16.32"
+requires_core_version: "v0.19.1"
 requires_engine_version:
 
 # the frameworks required to run this app
 frameworks:
-    - {"name": "tk-framework-shotgunutils", "version": "v4.x.x"}
+    - {"name": "tk-framework-shotgunutils", "version": "v5.x.x", "minimum_version": "v5.2.1"}
     - {"name": "tk-framework-qtwidgets", "version": "v2.x.x"}
     - {"name": "tk-framework-rdo", 'version': "v0.0.x"}

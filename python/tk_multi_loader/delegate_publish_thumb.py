@@ -15,29 +15,35 @@ from .model_latestpublish import SgLatestPublishModel
 from .utils import ResizeEventFilter
 
 # import the shotgun_model and view modules from the shotgun utils framework
-shotgun_model = sgtk.platform.import_framework("tk-framework-shotgunutils", "shotgun_model")
+shotgun_model = sgtk.platform.import_framework(
+    "tk-framework-shotgunutils", "shotgun_model"
+)
+shotgun_globals = sgtk.platform.import_framework(
+    "tk-framework-shotgunutils", "shotgun_globals"
+)
 shotgun_view = sgtk.platform.import_framework("tk-framework-qtwidgets", "views")
 
 from .ui.widget_publish_thumb import Ui_PublishThumbWidget
 from .delegate_publish import PublishWidget, PublishDelegate
+from . import model_item_data
+
 
 class PublishThumbWidget(PublishWidget):
     """
-    Thumbnail style widget which contains an image and some 
-    text underneath. The widget scales gracefully. 
+    Thumbnail style widget which contains an image and some
+    text underneath. The widget scales gracefully.
     Used in the main loader view.
     """
-    
+
     def __init__(self, parent):
         """
         :param parent: QT parent object
         """
         PublishWidget.__init__(self, Ui_PublishThumbWidget, parent)
-
     def set_text(self, header, body):
         """
         Populate the lines of text in the widget
-        
+
         :param header: Header text as string
         :param body: Body text as string
         """
@@ -49,13 +55,13 @@ class PublishThumbWidget(PublishWidget):
         """
         Calculates and returns a suitable size for this widget given a scale factor
         in pixels.
-        
+
         :returns: Size of the widget
-        """        
+        """
         # the thumbnail proportions are 512x400
         # add another 34px for the height so the text can be rendered.
         return QtCore.QSize(scale_factor, (scale_factor*0.78125)+34)
-        
+
 
 class SgPublishThumbDelegate(PublishDelegate):
     """
@@ -66,7 +72,7 @@ class SgPublishThumbDelegate(PublishDelegate):
         """
         Widget factory as required by base class. The base class will call this
         when a widget is needed and then pass this widget in to the various callbacks.
-        
+
         :param parent: Parent object for the widget
         """
         return PublishThumbWidget(parent)
@@ -78,27 +84,21 @@ class SgPublishThumbDelegate(PublishDelegate):
         :param model_index: Index of the item being drawn by the delegate.
         :param widget: Qt widget created by the delegate for rendering.
         """
-        # this is a publish!
-        sg_data = shotgun_model.get_sg_data(model_index)
+
+        # Extract the Shotgun data and field value from the model index.
+        (sg_data, field_value) = model_item_data.get_item_data(model_index)
 
         header_text = ""
         details_text = ""
 
-        # this is a folder item, injected into the publish model from the entity tree
-
-        field_data = shotgun_model.get_sanitized_data(model_index,
-                                                      shotgun_model.ShotgunModel.SG_ASSOCIATED_FIELD_ROLE)
-        # examples of data:
-        # intermediate node: {'name': 'sg_asset_type', 'value': 'Character' }
-        # intermediate node: {'name': 'sg_sequence',   'value': {'type': 'Sequence', 'id': 11, 'name': 'bunny_080'}}
-        # leaf node:         {'name': 'code',          'value': 'mystuff'}
-
-        field_value = field_data["value"]
-
-        if isinstance(field_value, dict) and "name" in field_value and "type" in field_value:
+        if (
+            isinstance(field_value, dict)
+            and "name" in field_value
+            and "type" in field_value
+        ):
             # intermediate node with entity link
             header_text = field_value["name"]
-            details_text = field_value["type"]
+            details_text = shotgun_globals.get_type_display_name(field_value["type"])
 
         elif isinstance(field_value, list):
             # this is a list of some sort. Loop over all elements and extract a comma separated list.
@@ -119,7 +119,7 @@ class SgPublishThumbDelegate(PublishDelegate):
         elif sg_data:
             # this is a leaf node
             header_text = field_value
-            details_text = sg_data.get("type")
+            details_text = shotgun_globals.get_type_display_name(sg_data["type"])
 
         else:
             # other value (e.g. intermediary non-entity link node like sg_asset_type)
@@ -223,21 +223,25 @@ class SgPublishThumbDelegate(PublishDelegate):
             if entity_link is None:
                 details_text = "Unlinked"
             else:
-                details_text = "%s %s" % (entity_link["type"], entity_link["name"])
+                entity_link_type = shotgun_globals.get_type_display_name(
+                    entity_link["type"]
+                )
+                details_text = "%s %s" % (entity_link_type, entity_link["name"])
 
         else:
             # std publish - render with a name and a publish type
             # main_body v3
             # Render
-            details_text = shotgun_model.get_sanitized_data(model_index,
-                                                            SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE)
+            details_text = shotgun_model.get_sanitized_data(
+                model_index, SgLatestPublishModel.PUBLISH_TYPE_NAME_ROLE
+            )
 
         widget.set_text(header_text, details_text)
 
     def sizeHint(self, style_options, model_index):
         """
         Specify the size of the item.
-        
+
         :param style_options: QT style options
         :param model_index: Model item to operate on
         """

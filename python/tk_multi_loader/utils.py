@@ -8,6 +8,7 @@
 # agreement to the Shotgun Pipeline Toolkit Source Code License. All rights
 # not expressly granted therein are reserved by Shotgun Software Inc.
 
+import sgtk
 from sgtk.platform.qt import QtCore, QtGui
 
 
@@ -34,6 +35,7 @@ class ResizeEventFilter(QtCore.QObject):
     # event system
     self.ui.thumbnail.installEventFilter(filter)
     """
+
     resized = QtCore.Signal()
 
     def eventFilter(self, obj, event):
@@ -72,9 +74,8 @@ def create_overlayed_user_publish_thumbnail(publish_pixmap, user_pixmap):
     # scale down the thumb
     if not publish_pixmap.isNull():
         thumb_scaled = publish_pixmap.scaled(
-            75, 75,
-            QtCore.Qt.KeepAspectRatioByExpanding,
-            QtCore.Qt.SmoothTransformation)
+            75, 75, QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation
+        )
 
         # now composite the thumbnail on top of the base image
         # bottom align it to make it look nice
@@ -90,9 +91,8 @@ def create_overlayed_user_publish_thumbnail(publish_pixmap, user_pixmap):
 
         # overlay the user picture on top of the thumbnail
         user_scaled = user_pixmap.scaled(
-            30, 30,
-            QtCore.Qt.KeepAspectRatioByExpanding,
-            QtCore.Qt.SmoothTransformation)
+            30, 30, QtCore.Qt.KeepAspectRatioByExpanding, QtCore.Qt.SmoothTransformation
+        )
         user_img = user_scaled.toImage()
         user_brush = QtGui.QBrush(user_img)
         painter.save()
@@ -139,10 +139,12 @@ def create_overlayed_folder_thumbnail(image):
 
     if not thumb.isNull():
 
-        thumb_scaled = thumb.scaled(MAX_THUMB_WIDTH,
-                                    MAX_THUMB_HEIGHT,
-                                    QtCore.Qt.KeepAspectRatio,
-                                    QtCore.Qt.SmoothTransformation)
+        thumb_scaled = thumb.scaled(
+            MAX_THUMB_WIDTH,
+            MAX_THUMB_HEIGHT,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
 
         # now composite the thumbnail
         thumb_img = thumb_scaled.toImage()
@@ -156,19 +158,21 @@ def create_overlayed_folder_thumbnail(image):
         height_difference = CANVAS_HEIGHT - thumb_scaled.height()
         width_difference = CANVAS_WIDTH - thumb_scaled.width()
 
-        inlay_offset_w = (width_difference/2)+(CORNER_RADIUS/2)
+        inlay_offset_w = (width_difference / 2) + (CORNER_RADIUS / 2)
         # add a 30 px offset here to push the image off center to
         # fit nicely inside the folder icon
-        inlay_offset_h = (height_difference/2)+(CORNER_RADIUS/2)+30
+        inlay_offset_h = (height_difference / 2) + (CORNER_RADIUS / 2) + 30
 
         # note how we have to compensate for the corner radius
         painter.translate(inlay_offset_w, inlay_offset_h)
-        painter.drawRoundedRect(0,
-                                0,
-                                thumb_scaled.width()-CORNER_RADIUS,
-                                thumb_scaled.height()-CORNER_RADIUS,
-                                CORNER_RADIUS,
-                                CORNER_RADIUS)
+        painter.drawRoundedRect(
+            0,
+            0,
+            thumb_scaled.width() - CORNER_RADIUS,
+            thumb_scaled.height() - CORNER_RADIUS,
+            CORNER_RADIUS,
+            CORNER_RADIUS,
+        )
 
         painter.end()
 
@@ -201,10 +205,12 @@ def create_overlayed_publish_thumbnail(image):
     if not thumb.isNull():
 
         # scale it down to fit inside a frame of maximum 512x512
-        thumb_scaled = thumb.scaled(CANVAS_WIDTH,
-                                    CANVAS_HEIGHT,
-                                    QtCore.Qt.KeepAspectRatio,
-                                    QtCore.Qt.SmoothTransformation)
+        thumb_scaled = thumb.scaled(
+            CANVAS_WIDTH,
+            CANVAS_HEIGHT,
+            QtCore.Qt.KeepAspectRatio,
+            QtCore.Qt.SmoothTransformation,
+        )
 
         # now composite the thumbnail on top of the base image
         # bottom align it to make it look nice
@@ -220,18 +226,20 @@ def create_overlayed_publish_thumbnail(image):
         width_difference = CANVAS_WIDTH - thumb_scaled.width()
 
         # center it horizontally
-        inlay_offset_w = (width_difference/2)+(CORNER_RADIUS/2)
+        inlay_offset_w = (width_difference / 2) + (CORNER_RADIUS / 2)
         # center it vertically
-        inlay_offset_h = (height_difference/2)+(CORNER_RADIUS/2)
+        inlay_offset_h = (height_difference / 2) + (CORNER_RADIUS / 2)
 
         # note how we have to compensate for the corner radius
         painter.translate(inlay_offset_w, inlay_offset_h)
-        painter.drawRoundedRect(0,
-                                0,
-                                thumb_scaled.width()-CORNER_RADIUS,
-                                thumb_scaled.height()-CORNER_RADIUS,
-                                CORNER_RADIUS,
-                                CORNER_RADIUS)
+        painter.drawRoundedRect(
+            0,
+            0,
+            thumb_scaled.width() - CORNER_RADIUS,
+            thumb_scaled.height() - CORNER_RADIUS,
+            CORNER_RADIUS,
+            CORNER_RADIUS,
+        )
 
         painter.end()
 
@@ -252,16 +260,17 @@ def filter_publishes(app, sg_data_list):
     try:
         # Constructing a wrapper dictionary so that it's future proof to
         # support returning additional information from the hook
-        hook_publish_list = [{"sg_publish": sg_data}
-                             for sg_data in sg_data_list]
+        hook_publish_list = [{"sg_publish": sg_data} for sg_data in sg_data_list]
 
-        hook_publish_list = app.execute_hook("filter_publishes_hook",
-                                             publishes=hook_publish_list)
+        hook_publish_list = app.execute_hook(
+            "filter_publishes_hook", publishes=hook_publish_list
+        )
         if not isinstance(hook_publish_list, list):
             app.log_error(
                 "hook_filter_publishes returned an unexpected result type \
                 '%s' - ignoring!"
-                % type(hook_publish_list).__name__)
+                % type(hook_publish_list).__name__
+            )
             hook_publish_list = []
 
         # split back out publishes:
@@ -276,3 +285,46 @@ def filter_publishes(app, sg_data_list):
         sg_data_list = []
 
     return sg_data_list
+
+
+def resolve_filters(filters):
+    """
+    When passed a list of filters, it will resolve strings found in the filters using the context.
+    For example: '{context.user}' could get resolved to {'type': 'HumanUser', 'id': 86, 'name': 'Philip Scadding'}
+
+    :param filters: A list of filters that has usually be defined by the user or by default in the environment yml
+    config or the app's info.yml. Supports complex filters as well. Filters should be passed in the following format:
+    [[task_assignees, is, '{context.user}'],[sg_status_list, not_in, [fin,omt]]]
+
+    :return: A List of filters for use with the shotgun api
+    """
+    app = sgtk.platform.current_bundle()
+
+    resolved_filters = []
+    for filter in filters:
+        if type(filter) is dict:
+            resolved_filter = {
+                "filter_operator": filter["filter_operator"],
+                "filters": resolve_filters(filter["filters"]),
+            }
+        else:
+            resolved_filter = []
+            for field in filter:
+                if field == "{context.entity}":
+                    field = app.context.entity
+                elif field == "{context.step}":
+                    field = app.context.step
+                elif field == "{context.project}":
+                    field = app.context.project
+                elif field == "{context.project.id}":
+                    if app.context.project:
+                        field = app.context.project.get("id")
+                    else:
+                        field = None
+                elif field == "{context.task}":
+                    field = app.context.task
+                elif field == "{context.user}":
+                    field = app.context.user
+                resolved_filter.append(field)
+        resolved_filters.append(resolved_filter)
+    return resolved_filters
