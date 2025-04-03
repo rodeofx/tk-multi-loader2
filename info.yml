@@ -32,6 +32,10 @@ configuration:
                      hide the more extensive Filter menu (which includes filtering options for
                      Published File Types). The legacy Published File Type filter widget
                      cannot be used in combination with the Filter menu.
+    display_thumbnails:
+        type: bool
+        default_value: True
+        description: Show latest publish as thumbnails or as a vertical list.
 
     # hooks
     actions_hook:
@@ -166,3 +170,4 @@ documentation_url: "https://help.autodesk.com/view/SGDEV/ENU/?guid=SG_Supervisor
 frameworks:
     - {"name": "tk-framework-shotgunutils", "version": "v5.x.x", "minimum_version": "v5.8.6"}
     - {"name": "tk-framework-qtwidgets", "version": "v2.x.x", "minimum_version": "v2.10.6"}
+    - {"name": "tk-framework-rdo", 'version': "v0.0.x"}

@@ -555,6 +555,8 @@ class SgLatestPublishModel(ShotgunModel):
         # Go ahead count types for the aggregate
         # and assemble filtered sg data set
         new_sg_data = []
+
+        self._publish_items = []
         for second_pass_data in unique_data.values():
 
             # get the shotgun data for this guy
@@ -572,6 +574,7 @@ class SgLatestPublishModel(ShotgunModel):
 
             # append to new sg data
             new_sg_data.append(sg_item)
+            self._publish_items.append(second_pass_data)
 
             # update our aggregate counts for the publish type view
             type_id = second_pass_data["type_id"]

@@ -300,6 +300,11 @@ class AppDialog(QtGui.QWidget):
         self.ui.check_none.clicked.connect(self._publish_type_model.select_none)
 
         #################################################
+        # filter status
+        self._filter_status = QtGui.QComboBox()
+        self._sg_type_ids = None
+
+        #################################################
         # thumb scaling
         scale_val = self._settings_manager.retrieve("thumb_size_scale", 140)
         # position both slider and view
@@ -387,6 +392,19 @@ class AppDialog(QtGui.QWidget):
         # load visibility state for details pane
         show_details = self._settings_manager.retrieve("show_details", False)
         self._set_details_pane_visiblity(show_details)
+
+        # Add rdo custom UI
+        hlayout = QtGui.QHBoxLayout()
+        spacerItem = QtGui.QSpacerItem(40, 20, QtGui.QSizePolicy.Expanding, QtGui.QSizePolicy.Minimum)
+        self.ui.verticalLayout.insertLayout(1, hlayout,)
+        self._add_rdo_status_filter(hlayout)
+        hlayout.addItem(spacerItem)
+
+        # Publishes search widget
+        hlayout.addWidget(self._search_widget)
+        self._search_widget.filter_changed.connect(
+            lambda filter: self._publish_proxy_model.set_search_query(str(filter)),
+        )
 
         # initialize proxy model with published file types filter set from the config
         self._apply_type_filters_on_publishes()
@@ -1112,6 +1130,12 @@ class AppDialog(QtGui.QWidget):
         show_folders = self._publish_type_model.get_show_folders()
         self._publish_proxy_model.set_filter_by_type_ids(sg_type_ids, show_folders)
 
+    def apply_status_filters_on_publishes(self):
+        """
+        Executed when the type listing changes
+        """
+        chosen_status = self._filter_status.currentText()
+        self._publish_proxy_model.set_filter_by_status(chosen_status)
     ########################################################################################
     # publish view
 
@@ -1660,6 +1684,7 @@ class AppDialog(QtGui.QWidget):
 
         # finalize initialization by clicking the home button, but only once the
         # data has properly arrived in the model.
+        self._first_home_click = {'call_from_load': True}
         self._on_home_clicked()
 
     def _get_entity_root(self, root):
@@ -1834,6 +1859,22 @@ class AppDialog(QtGui.QWidget):
         else:
             # revert to default style sheet
             tree_view.setStyleSheet("QTreeView::item { padding: 6px; }")
+
+    def _add_rdo_status_filter(self, hlayout):
+        """
+        Add a combo box to sort the latest publishes by status
+        Kind of copying off the _add_rdo_status_filter
+        """
+        filter_label = QtGui.QLabel("Filter by Status")
+        filter_label.setAlignment(
+            QtCore.Qt.AlignLeft
+            |QtCore.Qt.AlignTrailing
+            |QtCore.Qt.AlignVCenter
+        )
+        self._filter_status.setSizeAdjustPolicy(QtGui.QComboBox.AdjustToContents)
+        hlayout.addWidget(filter_label)
+        hlayout.addWidget(self._filter_status)
+        self._filter_status.activated.connect(self.apply_status_filters_on_publishes)
 
     def _on_entity_profile_tab_clicked(self):
         """
